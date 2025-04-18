@@ -1,0 +1,17 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "ABCDE12345.com.tapeat.app",
+        "paths": ["*"]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": ["ABCDE12345.com.tapeat.app"]
+  },
+  "appclips": {
+    "apps": ["ABCDE12345.com.tapeat.app.Clip"]
+  }
+}

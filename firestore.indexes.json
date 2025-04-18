@@ -1,0 +1,36 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "menuItems",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "categoryId", "order": "ASCENDING" },
+        { "fieldPath": "order", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "categories",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "order", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "restaurants",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "name", "order": "ASCENDING" },
+        { "fieldPath": "searchTerms", "arrayConfig": "CONTAINS" }
+      ]
+    },
+    {
+      "collectionGroup": "restaurants", 
+      "queryScope": "COLLECTION", 
+      "fields": [
+        { "fieldPath": "searchTerms", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "name", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

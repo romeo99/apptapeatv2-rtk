@@ -1,0 +1,20 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /restaurants/{restaurantId}/{allPaths=**} {
+      // Allow read access to all files
+      allow read: true;
+      
+      // Allow write access only to authenticated users for their restaurant
+      allow write: if request.auth != null && 
+        (request.auth.uid == restaurantId || 
+         exists(/databases/$(database)/documents/restaurants/$(restaurantId)/staff/$(request.auth.uid)));
+         
+      // Validate file uploads
+      match /{imageId} {
+        allow write: if request.resource.size < 5 * 1024 * 1024 && // 5MB max
+                     request.resource.contentType.matches('image/.*');
+      }
+    }
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "name": "TapEAT",
+  "short_name": "TapEAT",
+  "version": "1.0.0",
+  "id": "/",
+  "description": "Commandez facilement dans vos restaurants préférés",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#10B981",
+  "orientation": "any",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "https://i.ibb.co/MsGnLJM/applogotapeat.png",
+      "sizes": "72x72",
+      "type": "image/png"
+    },
+    {
+      "src": "https://i.ibb.co/MsGnLJM/applogotapeat.png", 
+      "sizes": "96x96",
+      "type": "image/png"
+    },
+    {
+      "src": "https://i.ibb.co/MsGnLJM/applogotapeat.png",
+      "sizes": "128x128",
+      "type": "image/png"
+    },
+    {
+      "src": "https://i.ibb.co/MsGnLJM/applogotapeat.png",
+      "sizes": "144x144",
+      "type": "image/png"
+    },
+    {
+      "src": "https://i.ibb.co/MsGnLJM/applogotapeat.png",
+      "sizes": "152x152",
+      "type": "image/png"
+    },
+    {
+      "src": "https://i.ibb.co/MsGnLJM/applogotapeat.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://i.ibb.co/MsGnLJM/applogotapeat.png",
+      "sizes": "384x384",
+      "type": "image/png"
+    },
+    {
+      "src": "https://i.ibb.co/MsGnLJM/applogotapeat.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
