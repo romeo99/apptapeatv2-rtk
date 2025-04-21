@@ -1,16 +1,15 @@
-import { loadStripe } from '@stripe/stripe-js';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { ChevronLeft, CreditCard } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import OrderSummary from '../components/OrderSummary';
 import UpsellModal from '../components/UpsellModal';
 import { db } from '../config/firebase';
-import OrderSummary from '../components/OrderSummary';
 import { useCart } from '../context/CartContext';
 import { useRestaurantContext } from '../context/RestaurantContext';
 import { createFoodCourtOrder, createOrder } from '../services/orderService';
-import { Restaurant } from '../types/firebase';
 import { createCheckoutSession } from '../services/stripeCheckoutService';
+import { Restaurant } from '../types/firebase';
 import { getSuggestionGroups } from '../utils/suggestionEngine';
 
 export default function Checkout() {
@@ -40,8 +39,8 @@ export default function Checkout() {
 
     // Check if Google Pay is available
     // This is a simplified check - in production you'd use the Google Pay API
-    const isGooglePaySupported = 
-      window.navigator.userAgent.indexOf('Android') > -1 || 
+    const isGooglePaySupported =
+      window.navigator.userAgent.indexOf('Android') > -1 ||
       /Chrome/.test(navigator.userAgent) && /Google Inc/.test(navigator.vendor);
     setIsGooglePayAvailable(isGooglePaySupported);
   }, []);
@@ -195,7 +194,7 @@ export default function Checkout() {
     try {
       setLoading(true);
       console.log(`Processing Stripe payment for order ${orderId} in restaurant ${restaurantData?.id} - Starting checkout flow`);
-      
+
       const checkoutUrl = await createCheckoutSession({
         restaurantId: restaurantData?.id || '',
         items,
@@ -204,7 +203,7 @@ export default function Checkout() {
         successUrl: `${window.location.origin}/order-confirmation`,
         cancelUrl: `${window.location.origin}/checkout?order_id=${orderId}`
       });
-      
+
       console.log(`Redirecting to Stripe checkout: ${checkoutUrl} - Order should be visible in admin panel`);
       window.location.href = checkoutUrl;
 
@@ -224,7 +223,7 @@ export default function Checkout() {
       clearCart();
       localStorage.removeItem('foodCourtId');
       localStorage.removeItem('deliveryInfo');
-      
+
       if (isFoodCourtOrder && foodCourtId) {
         navigate(`/order-confirmation${isRegisterMode ? '?mode=register' : ''}`, {
           state: { foodCourtId },
@@ -251,7 +250,7 @@ export default function Checkout() {
     // For Apple Pay and Google Pay, use the card payment flow
     if (selectedMethod === 'apple_pay' || selectedMethod === 'google_pay') {
       console.log(`Using card payment flow for ${selectedMethod}`);
-      selectedMethod = 'card';
+      setSelectedMethod('card');
     }
 
     //Controle pour verifier si la valeur de l'heure est bien renseignée et est au minimum 15 minutes après l'heure actuelle
@@ -298,34 +297,34 @@ export default function Checkout() {
       if (selectedMethod === 'cash' || isRegisterMode) {
         // Pour les paiements en espèces, créer la commande avec un statut 'pending'
         const cashOrderData = prepareOrderData(selectedMethod);
-        
-        let orderId: string | string[] | void = isFoodCourtOrder 
-          ? await createFoodCourtOrder(foodCourtId!, cashOrderData) 
+
+        let orderId: string | string[] | void = isFoodCourtOrder
+          ? await createFoodCourtOrder(foodCourtId!, cashOrderData)
           : await createOrder(restaurantData?.id!, {
             ...cashOrderData,
             paymentMethod: selectedMethod
           });
-        
+
         if (!orderId) {
           throw new Error('Erreur lors de la création de la commande');
         }
-        
+
         // Commande créée avec succès pour paiement en espèces
         await handleSuccessfulOrder(Array.isArray(orderId) ? orderId[0] : orderId);
-      } 
+      }
       // Pour les paiements par carte ou Apple Pay (non mode caisse)
       else if ((selectedMethod === 'card' || selectedMethod === 'apple_pay' || selectedMethod === 'google_pay') && !isRegisterMode) {
         // Pour les paiements en ligne, créer la commande avec un statut 'awaiting_payment'
         // Use 'card' as the payment method for all online payments to ensure consistent processing
         const orderData = prepareOrderData('card');
-        let orderId: string | string[] | void = isFoodCourtOrder 
-          ? await createFoodCourtOrder(foodCourtId!, orderData) 
+        let orderId: string | string[] | void = isFoodCourtOrder
+          ? await createFoodCourtOrder(foodCourtId!, orderData)
           : await createOrder(restaurantData?.id!, orderData);
-        
+
         if (!orderId) {
           throw new Error('Erreur lors de la création de la commande');
         }
-        
+
         const orderIdStr = Array.isArray(orderId) ? orderId[0] : orderId;
         await processStripePayment(orderIdStr);
       }
@@ -429,13 +428,12 @@ export default function Checkout() {
           <button
             onClick={() => setSelectedMethod('card')}
             disabled={!allowedMethods.includes('card') || !restaurantData?.stripeAccountId}
-            className={`p-3 sm:p-4 rounded-xl flex flex-col items-center gap-1 sm:gap-2 border-2 transition-colors ${
-              selectedMethod === 'card'
+            className={`p-3 sm:p-4 rounded-xl flex flex-col items-center gap-1 sm:gap-2 border-2 transition-colors ${selectedMethod === 'card'
                 ? 'bg-opacity-10'
                 : allowedMethods.includes('card') && restaurantData?.stripeAccountId
                   ? 'bg-white border-gray-200 hover:border-2'
                   : 'bg-gray-50 border border-gray-200 opacity-50 cursor-not-allowed'
-            }`}
+              }`}
             style={selectedMethod === 'card' ? {
               backgroundColor: `${themeColor}20`,
               borderColor: themeColor
@@ -475,13 +473,12 @@ export default function Checkout() {
             <button
               onClick={() => setSelectedMethod('apple_pay')}
               disabled={!allowedMethods.includes('apple_pay') || !restaurantData?.stripeAccountId}
-              className={`p-3 sm:p-4 rounded-xl flex flex-col items-center gap-1 sm:gap-2 border-2 transition-colors ${
-                selectedMethod === 'apple_pay'
+              className={`p-3 sm:p-4 rounded-xl flex flex-col items-center gap-1 sm:gap-2 border-2 transition-colors ${selectedMethod === 'apple_pay'
                   ? 'bg-opacity-10'
                   : allowedMethods.includes('apple_pay') && restaurantData?.stripeAccountId
                     ? 'bg-white border-gray-200 hover:border-2'
                     : 'bg-gray-50 border border-gray-200 opacity-50 cursor-not-allowed'
-              }`}
+                }`}
               style={selectedMethod === 'apple_pay' ? {
                 backgroundColor: `${themeColor}20`,
                 borderColor: themeColor
@@ -504,13 +501,12 @@ export default function Checkout() {
             <button
               onClick={() => setSelectedMethod('google_pay')}
               disabled={!restaurantData?.stripeAccountId}
-              className={`p-3 sm:p-4 rounded-xl flex flex-col items-center gap-1 sm:gap-2 border-2 transition-colors ${
-                selectedMethod === 'google_pay'
+              className={`p-3 sm:p-4 rounded-xl flex flex-col items-center gap-1 sm:gap-2 border-2 transition-colors ${selectedMethod === 'google_pay'
                   ? 'bg-opacity-10'
                   : restaurantData?.stripeAccountId
                     ? 'bg-white border-gray-200 hover:border-2'
                     : 'bg-gray-50 border border-gray-200 opacity-50 cursor-not-allowed'
-              }`}
+                }`}
               style={selectedMethod === 'google_pay' ? {
                 backgroundColor: `${themeColor}20`,
                 borderColor: themeColor

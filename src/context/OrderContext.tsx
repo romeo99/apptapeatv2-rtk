@@ -67,9 +67,6 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
         updatedAt: serverTimestamp(),
         lastStatusUpdate: new Date().toISOString(),
         statusUpdatedAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        lastStatusUpdate: new Date().toISOString(),
-        statusUpdatedAt: serverTimestamp(),
         visibleInDashboard: true // Ensure order is visible in dashboard when status changes
       };
 
@@ -78,18 +75,18 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
         orderData.paymentStatus === 'pending' &&
         status === 'preparing') {
         updates.paymentStatus = 'paid';
-       updates.paymentConfirmedAt = serverTimestamp();
-       updates.paymentConfirmedAt = serverTimestamp();
+        updates.paymentConfirmedAt = serverTimestamp();
+        updates.paymentConfirmedAt = serverTimestamp();
       }
       await updateDoc(orderRef, updates);
-      
-     // Log pour le débogage
+
+      // Log pour le débogage
       console.log(`Order ${orderId} status updated to ${status} with payment status ${updates.paymentStatus || orderData.paymentStatus}`);
-     // Log pour le débogage
+      // Log pour le débogage
       console.log(`Order ${orderId} status updated to ${status} with payment status ${updates.paymentStatus || orderData.paymentStatus}`);
 
-     // Envoyer une notification au client si l'ordre a un userId
-     // Envoyer une notification au client si l'ordre a un userId
+      // Envoyer une notification au client si l'ordre a un userId
+      // Envoyer une notification au client si l'ordre a un userId
       const order = orders.find(o => o.id === orderId);
       if (order?.userId) {
         await sendOrderNotification(order.userId, orderId, status);

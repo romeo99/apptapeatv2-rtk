@@ -196,38 +196,3 @@ export const applePayDomainAssociation = functions.https.onRequest(async (req, r
     res.status(500).send('Error serving domain association file');
   }
 });
-
-// Apple Pay domain verification endpoint
-export const applePayDomainAssociation = functions.https.onRequest(async (req, res) => {
-  try {
-    // Path to the domain association file
-    const filePath = path.join(__dirname, '../public/.well-known/apple-developer-merchantid-domain-association');
-    
-    // Read the file
-    const fileContent = fs.readFileSync(filePath, 'utf8');
-    
-    // Set the content type and send the file
-    res.set('Content-Type', 'text/plain');
-    res.status(200).send(fileContent);
-  } catch (error) {
-    console.error('Error serving Apple Pay domain association file:', error);
-    res.status(500).send('Error serving domain association file');
-  }
-});
-// Apple Pay domain verification endpoint
-export const applePayDomainAssociation = functions.https.onRequest(async (req, res) => {
-  try {
-    // Path to the domain association file
-    const filePath = path.join(__dirname, '../public/.well-known/apple-developer-merchantid-domain-association');
-    
-    // Read the file
-    const fileContent = fs.readFileSync(filePath, 'utf8');
-    
-    // Set the content type and send the file
-    res.set('Content-Type', 'text/plain');
-    res.status(200).send(fileContent);
-  } catch (error) {
-    console.error('Error serving Apple Pay domain association file:', error);
-    res.status(500).send('Error serving domain association file');
-  }
-});

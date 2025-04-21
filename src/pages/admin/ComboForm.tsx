@@ -192,7 +192,7 @@ export default function ComboForm() {
 
       const comboData = {
         ...formData,
-        sections: sectionsWithImages,
+        //sections: sectionsWithImages,
         // Ensure maxChoices is properly set for each section
         sections: sectionsWithImages.map(section => ({
           ...section,
