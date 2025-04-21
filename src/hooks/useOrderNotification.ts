@@ -5,6 +5,7 @@ import { useOrderContext } from '../context/OrderContext';
 //import { printReceipt } from '../services/printingService';
 import { useReactToPrint } from "react-to-print";
 import { Order } from '../types/firebase';
+import { useRestaurantContext } from '../context/RestaurantContext';
 
 const initializeOrderNotifications = (): void => {
     const notifications = localStorage.getItem('orderNotifications');
@@ -17,6 +18,7 @@ const useOrderNotification = () => {
     const { orders } = useOrderContext();
     const { playNotificationSound } = useNotification();
     const previousOrdersRef = useRef<string[]>([]);
+    const { restaurant } = useRestaurantContext();
     const [play] = useSound(notificationSoundUrl, {
         volume: 1.0,
         interrupt: true // Allow interrupting previous sound
@@ -50,13 +52,15 @@ const useOrderNotification = () => {
                     //printReceipt(orders.find((o) => o.id === id)!);
 
                     // Définir la commande en cours d'impression
-                    const order = orders.find(o => o.id === id);
-                    if (order) {
-                        setOrderToPrint(order);
-                        setTimeout(() => {
-                            handlePrint(); // Lancer l'impression
-                            setOrderToPrint(null)
-                        }, 2000);
+                    if (restaurant?.autoPrint !== false) {
+                        const order = orders.find(o => o.id === id);
+                        if (order) {
+                            setOrderToPrint(order);
+                            setTimeout(() => {
+                                handlePrint(); // Lancer l'impression
+                                setOrderToPrint(null)
+                            }, 2000);
+                        }
                     }
 
                     notifications[id] = true;

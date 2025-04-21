@@ -31,7 +31,8 @@ export default function OptionsSettings() {
     averagePreparationTime: 15,
     tableCount: 0,
     deliveryFee: 0,
-    driverFee: 0
+    driverFee: 0,
+    autoPrint: null as boolean | null
   });
 
   useOrderNotification();
@@ -45,7 +46,8 @@ export default function OptionsSettings() {
         averagePreparationTime: restaurant.averagePreparationTime || 15,
         tableCount: restaurant.tableCount || 0,
         deliveryFee: restaurant.deliveryFee || 0,
-        driverFee: restaurant.driverFee || 0
+        driverFee: restaurant.driverFee || 0,
+        autoPrint: restaurant.autoPrint ?? true
       });
     }
   }, [restaurant]);
@@ -69,7 +71,8 @@ export default function OptionsSettings() {
         averagePreparationTime: Math.max(0, Number(formData.averagePreparationTime) || 15),
         tableCount: Math.max(0, Number(formData.tableCount) || 0),
         deliveryFee: Math.max(0, Number(formData.deliveryFee) || 0),
-        driverFee: Math.max(0, Number(formData.driverFee) || 0)
+        driverFee: Math.max(0, Number(formData.driverFee) || 0),
+        autoPrint: !!formData.autoPrint,
       };
 
       await updateRestaurant(restaurant.id, cleanData);
@@ -292,6 +295,21 @@ export default function OptionsSettings() {
                   }))}
                   className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-lg"
                 />
+              </div>
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="autoPrint"
+                  checked={formData.autoPrint}
+                  onChange={(e) => setFormData(prev => ({
+                    ...prev,
+                    autoPrint: e.target.checked
+                  }))}
+                  className="w-5 h-5 text-emerald-600 focus:ring-2 focus:ring-emerald-500 border-gray-300 rounded"
+                />
+                <label htmlFor="autoPrint" className="text-sm font-medium text-gray-700">
+                  Impression automatique des tickets
+                </label>
               </div>
             </div>
           </div>
