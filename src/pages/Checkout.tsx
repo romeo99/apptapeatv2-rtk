@@ -11,10 +11,11 @@ import { createFoodCourtOrder, createOrder } from '../services/orderService';
 import { createCheckoutSession } from '../services/stripeCheckoutService';
 import { Restaurant } from '../types/firebase';
 import { getSuggestionGroups } from '../utils/suggestionEngine';
+import { useAuth } from '../context/AuthContext';
 
 export default function Checkout() {
   const navigate = useNavigate();
-  const { items, applicationFee, serviceFees, subtotal, total, clearCart, scheduledTime, isFoodCourtOrder, foodCourtId, setScheduledTime } = useCart();
+  const { items, applicationFee, serviceFees, subtotal, total, clearCart, scheduledTime, isFoodCourtOrder, foodCourtId, setScheduledTime, anonymousUser, } = useCart();
   const { themeColor, restaurant } = useRestaurantContext();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -27,6 +28,8 @@ export default function Checkout() {
   const [restaurantData, setRestaurantData] = useState<Restaurant | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const today = new Date().toISOString().split('T')[0];
+
+  const { user } = useAuth();
 
   // Check if Apple Pay is available
   const [isApplePayAvailable, setIsApplePayAvailable] = useState(false);
@@ -157,7 +160,9 @@ export default function Checkout() {
         type: orderType.type,
         subtotal: parseFloat(subtotal.toFixed(2)),
         total: parseFloat(total.toFixed(2)),
+        customerName: user ? user.displayName : anonymousUser,
         paymentMethod: selectedMethod,
+        paymentStatus: selectedMethod === 'cash' ? 'pending' : 'paid',
         scheduledTime,
         ...(deliveryInfo && { delivery: deliveryInfo })
       };
@@ -183,6 +188,7 @@ export default function Checkout() {
         total: parseFloat(total.toFixed(2)),
         paymentMethod: selectedMethod,
         ...(message && { message }),
+        customerName: user ? user.displayName : anonymousUser,
         scheduledTime,
         ...(deliveryInfo && { delivery: deliveryInfo })
       };
@@ -429,10 +435,10 @@ export default function Checkout() {
             onClick={() => setSelectedMethod('card')}
             disabled={!allowedMethods.includes('card') || !restaurantData?.stripeAccountId}
             className={`p-3 sm:p-4 rounded-xl flex flex-col items-center gap-1 sm:gap-2 border-2 transition-colors ${selectedMethod === 'card'
-                ? 'bg-opacity-10'
-                : allowedMethods.includes('card') && restaurantData?.stripeAccountId
-                  ? 'bg-white border-gray-200 hover:border-2'
-                  : 'bg-gray-50 border border-gray-200 opacity-50 cursor-not-allowed'
+              ? 'bg-opacity-10'
+              : allowedMethods.includes('card') && restaurantData?.stripeAccountId
+                ? 'bg-white border-gray-200 hover:border-2'
+                : 'bg-gray-50 border border-gray-200 opacity-50 cursor-not-allowed'
               }`}
             style={selectedMethod === 'card' ? {
               backgroundColor: `${themeColor}20`,
@@ -474,10 +480,10 @@ export default function Checkout() {
               onClick={() => setSelectedMethod('apple_pay')}
               disabled={!allowedMethods.includes('apple_pay') || !restaurantData?.stripeAccountId}
               className={`p-3 sm:p-4 rounded-xl flex flex-col items-center gap-1 sm:gap-2 border-2 transition-colors ${selectedMethod === 'apple_pay'
-                  ? 'bg-opacity-10'
-                  : allowedMethods.includes('apple_pay') && restaurantData?.stripeAccountId
-                    ? 'bg-white border-gray-200 hover:border-2'
-                    : 'bg-gray-50 border border-gray-200 opacity-50 cursor-not-allowed'
+                ? 'bg-opacity-10'
+                : allowedMethods.includes('apple_pay') && restaurantData?.stripeAccountId
+                  ? 'bg-white border-gray-200 hover:border-2'
+                  : 'bg-gray-50 border border-gray-200 opacity-50 cursor-not-allowed'
                 }`}
               style={selectedMethod === 'apple_pay' ? {
                 backgroundColor: `${themeColor}20`,
@@ -502,10 +508,10 @@ export default function Checkout() {
               onClick={() => setSelectedMethod('google_pay')}
               disabled={!restaurantData?.stripeAccountId}
               className={`p-3 sm:p-4 rounded-xl flex flex-col items-center gap-1 sm:gap-2 border-2 transition-colors ${selectedMethod === 'google_pay'
-                  ? 'bg-opacity-10'
-                  : restaurantData?.stripeAccountId
-                    ? 'bg-white border-gray-200 hover:border-2'
-                    : 'bg-gray-50 border border-gray-200 opacity-50 cursor-not-allowed'
+                ? 'bg-opacity-10'
+                : restaurantData?.stripeAccountId
+                  ? 'bg-white border-gray-200 hover:border-2'
+                  : 'bg-gray-50 border border-gray-200 opacity-50 cursor-not-allowed'
                 }`}
               style={selectedMethod === 'google_pay' ? {
                 backgroundColor: `${themeColor}20`,

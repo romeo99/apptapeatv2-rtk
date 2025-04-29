@@ -34,6 +34,11 @@ export default function OrderHistoryItem({ order }: OrderHistoryItemProps) {
         <div className="flex items-center justify-between">
           <div className="flex-1">
             <span className="text-sm text-gray-500">Commande #{order.orderNumber}</span>
+            {order.customerName && <div className="flex items-center gap-2 mt-1">
+              <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-white-800">
+                Client: {order.customerName}
+              </span>
+            </div>}
             <div className="flex items-center gap-2 mt-1">
               <span className="font-medium">{(Number(order.total) || 0).toFixed(2)} €</span>
               <div className="flex items-center gap-1 px-2 py-1 bg-gray-100 rounded-full">

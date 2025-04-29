@@ -1,4 +1,4 @@
-import { Bike, Clock, ShoppingBag, UtensilsCrossed } from 'lucide-react';
+import { Bike, ShoppingBag, UtensilsCrossed } from 'lucide-react';
 import { Order } from '../../../types/firebase';
 
 interface OrderItemProps {
@@ -16,20 +16,19 @@ const orderTypeIcons = {
   delivery: { icon: Bike, label: 'Livraison' }
 };
 
-export default function OrderItem({ 
-  order, 
-  expandedOrder, 
-  toggleOrderExpansion, 
-  printOrder, 
+export default function OrderItem({
+  order,
+  expandedOrder,
+  toggleOrderExpansion,
+  printOrder,
   newOrders,
-  children 
+  children
 }: OrderItemProps) {
   return (
     <div
       id={`order-${order.id}`}
-      className={`bg-white rounded-lg shadow-sm overflow-hidden transition-all duration-300 ${
-        newOrders.includes(order.id) ? 'animate-pulse-emerald' : ''
-      }`}
+      className={`bg-white rounded-lg shadow-sm overflow-hidden transition-all duration-300 ${newOrders.includes(order.id) ? 'animate-pulse-emerald' : ''
+        }`}
     >
       <div className="p-4 cursor-pointer" onClick={() => toggleOrderExpansion(order.id)}>
         <div className="flex items-start justify-between mb-2">
@@ -63,13 +62,16 @@ export default function OrderItem({
                 <div className="flex items-center gap-2">
                   {orderTypeIcons[order.type as keyof typeof orderTypeIcons]?.label}
                 </div>
+                {order.customerName && <div className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">
+                  Client: {order.customerName}
+                </div>}
               </div>
             </div>
           </div>
           <div className="flex flex-col items-end min-w-[120px] text-right">
             <span className="text-lg font-semibold text-emerald-600 mb-1">{order.total.toFixed(2)} €</span>
             <span className="text-sm text-gray-500">
-              {order.status === 'scheduled' && order.scheduledTime?.date && order.scheduledTime?.time ? 
+              {order.status === 'scheduled' && order.scheduledTime?.date && order.scheduledTime?.time ?
                 `${order.scheduledTime.date.split('-').reverse().join('-')} à ${order.scheduledTime.time}` :
                 new Date(order.createdAt).toLocaleTimeString('fr-FR', {
                   hour: '2-digit',
@@ -83,9 +85,9 @@ export default function OrderItem({
                 </span>
               )}
             </div>
-            <div 
-              className="flex items-center justify-end gap-2 mt-1" 
-              onClick={(e) => { 
+            <div
+              className="flex items-center justify-end gap-2 mt-1"
+              onClick={(e) => {
                 e.stopPropagation();
                 printOrder(order);
               }}

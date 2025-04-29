@@ -23,6 +23,8 @@ interface CartContextType {
   foodCourtId?: string | null;
   scheduledTime: { date: string; time: string } | null;
   setScheduledTime: (time: { date: string; time: string } | null) => void;
+  anonymousUser: string;
+  fixAnonymousUser: (value: string) => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -43,6 +45,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [foodCourtId, setFoodCourtId] = useState<string | null>(null);
   const [activePromotions, setActivePromotions] = useState<Promotion[]>([]);
   const [applicationFee, setApplicationFee] = useState<number>(0);
+  const [anonymouUser, setAnonymousUser] = useState('');
 
   const { restaurant } = useRestaurantContext();
 
@@ -334,6 +337,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const toggleCart = () => setIsCartOpen((prev) => !prev);
 
+  const fixAnonymousUser = (value: string) => setAnonymousUser(value);
+
   const subtotal =
     items && Array.isArray(items)
       ? items.reduce((sum, item) => {
@@ -352,6 +357,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
         return sum + item.price * item.quantity;
       }, 0)
       : 0;
+
+  const anonymousUser = anonymouUser;
 
   const serviceFees = subtotal * applicationFee;
   const total = subtotal + serviceFees;
@@ -375,6 +382,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
         foodCourtId,
         scheduledTime,
         setScheduledTime,
+        anonymousUser,
+        fixAnonymousUser
       }}>
       {children}
     </CartContext.Provider>
