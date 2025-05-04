@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
+import * as functions from 'firebase-functions';
 import Stripe from 'stripe';
 
 const stripe = new Stripe(functions.config().stripe.secret_key, {
@@ -38,9 +38,9 @@ export const createCheckoutSession = functions.https.onCall(async (data, context
     throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
   } */
 
-  const { restaurants, successUrl, cancelUrl, fees, orderId } = data;
+  const { restaurants, successUrl, cancelUrl, fees, method, userFistname } = data;
   //const userId = context.auth.uid;
-  const userId = '123'; // For testing purposes
+  const userId = userFistname; // For testing purposes
 
   try {
     // Validate all restaurants first
@@ -61,23 +61,8 @@ export const createCheckoutSession = functions.https.onCall(async (data, context
       }),
     );
 
-    // Get the order to determine the payment method
-    let paymentMethod = 'card';
-    if (orderId && restaurants[0].restaurantId) {
-      try {
-        const orderRef = db.doc(`restaurants/${restaurants[0].restaurantId}/orders/${orderId}`);
-        const orderDoc = await orderRef.get();
-        if (orderDoc.exists) {
-          const orderData = orderDoc.data();
-          paymentMethod = orderData?.paymentMethod || 'card';
-        }
-      } catch (err) {
-        console.warn('Error getting order payment method:', err);
-      }
-    }
-
     const paymentSessionRef = db.collection('paymentSessions').doc();
-    const paymentSession = {
+    const paymentSession: PaymentSession = {
       id: paymentSessionRef.id,
       restaurants,
       status: 'pending',
@@ -87,12 +72,15 @@ export const createCheckoutSession = functions.https.onCall(async (data, context
       checkoutSessionId: '',
     };
 
+    // Calculate total amount
+    // const totalAmount = restaurants.reduce((sum: any, restaurant: { amount: any }) => sum + restaurant.amount, 0);
+
     // Create Stripe checkout session
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: paymentMethod === 'apple_pay' ? ['card', 'apple_pay'] : ['card'],
+      payment_method_types: [method],
       allow_promotion_codes: true,
       mode: 'payment',
-      success_url: `${successUrl}?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${successUrl}&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: cancelUrl,
       payment_intent_data: {
         transfer_group: paymentSessionRef.id,
@@ -100,21 +88,21 @@ export const createCheckoutSession = functions.https.onCall(async (data, context
       metadata: {
         paymentSessionId: paymentSessionRef.id,
         userId,
-        orderId,
-        restaurantId: restaurants[0].restaurantId
       },
       line_items: [
-        ...restaurants.flatMap((restaurant) => restaurant.items.map((item) => ({
-          price_data: {
-            currency: 'eur',
-            product_data: {
-              name: item.name,
-              images: [item.image],
+        ...restaurants.flatMap((restaurant: { items: any[] }) =>
+          restaurant.items.map((item: { name: any; image: any; price: number; quantity: any }) => ({
+            price_data: {
+              currency: 'eur',
+              product_data: {
+                name: item.name,
+                images: [item.image],
+              },
+              unit_amount: Math.round(item.price * 100), // Convert to cents
             },
-            unit_amount: Math.round(item.price * 100), // Convert to cents
-          },
-          quantity: item.quantity,
-        }))),
+            quantity: item.quantity,
+          })),
+        ),
         // Add service fees as a separate line item
         {
           price_data: {
@@ -123,7 +111,7 @@ export const createCheckoutSession = functions.https.onCall(async (data, context
               name: 'Frais de service',
               description: 'Frais de service et de traitement',
             },
-            unit_amount: Math.round(restaurants.reduce((total, restaurant) => total + restaurant.amount, 0) * fees * 100), // Convert to cents
+            unit_amount: Math.round(restaurants.reduce((total: number, restaurant: any) => total + restaurant.amount, 0) * fees * 100), // Convert to cents
           },
           quantity: 1,
         },
@@ -134,25 +122,12 @@ export const createCheckoutSession = functions.https.onCall(async (data, context
     paymentSession.checkoutSessionId = session.id;
     await paymentSessionRef.set(paymentSession);
 
-    // Also update the original order with the session ID for tracking
-    const restaurantId = restaurants[0].restaurantId;
-    
-    if (orderId && restaurantId) {
-      await db.doc(`restaurants/${restaurantId}/orders/${orderId}`).update({
-        stripeSessionId: session.id,
-        updatedAt: admin.firestore.Timestamp.now(),
-        // Preserve the original payment method
-        paymentMethod: paymentMethod
-      });
-    }
-
     return { sessionId: session.id };
   } catch (error) {
     console.error('Error creating checkout session:', error);
     throw new functions.https.HttpsError('internal', 'Unable to create checkout session');
   }
 });
-
 
 export const createStripeConnectAccount = functions.https.onCall(async (data, context) => {
   /* if (!context.auth) {
@@ -176,7 +151,7 @@ export const createStripeConnectAccount = functions.https.onCall(async (data, co
     // Create a Stripe Connect account
     const account = await stripe.accounts.create({
       type: 'express',
-      country: 'FR',
+      country: 'FR', // Assuming the restaurant is in France
       email: restaurantData?.email,
       business_type: 'company',
       capabilities: {
@@ -209,6 +184,7 @@ export const createStripeConnectAccount = functions.https.onCall(async (data, co
 export const handleStripeWebhook = functions.https.onRequest(async (req, res) => {
   const sig = req.headers['stripe-signature'];
   const endpointSecret = functions.config().stripe.webhook_secret;
+  let event: Stripe.Event;
 
   if (!sig || !endpointSecret) {
     console.error('Missing stripe signature or endpoint secret');
@@ -217,159 +193,116 @@ export const handleStripeWebhook = functions.https.onRequest(async (req, res) =>
   }
 
   try {
-    const event = stripe.webhooks.constructEvent(req.rawBody, sig, endpointSecret);
-
-    if (event.type === 'checkout.session.completed') {
-      const session = event.data.object;
-      const { paymentSessionId, orderId, restaurantId } = session.metadata;
-
-      // Si nous avons directement l'orderId dans les métadonnées, mettons à jour cette commande
-      if (orderId && restaurantId) {
-        try {
-          // Mettre directement à jour l'ordre dans la collection du restaurant
-          const orderRef = db.collection('restaurants').doc(restaurantId).collection('orders').doc(orderId);
-         
-         // Vérifier d'abord si la commande existe
-         const orderDoc = await orderRef.get();
-         if (!orderDoc.exists) {
-           console.error(`Order ${orderId} not found in restaurant ${restaurantId}`);
-           res.status(404).send('Order not found');
-           return;
-         }
-
-         // Vérifier si la commande a déjà été traitée
-         const orderData = orderDoc.data();
-         if (orderData?.paymentStatus === 'paid') {
-           console.log(`Order ${orderId} already marked as paid, skipping update`);
-           res.json({ received: true, status: 'already_processed' });
-           return;
-         }
-
-          await orderRef.update({
-            status: 'pending', // Assure que la commande est visible dans le dashboard
-            paymentStatus: 'paid',
-            paymentMethod: session.payment_method_types?.[0] || 'card', // Update with actual payment method used
-            paymentConfirmed: true,
-            paymentConfirmedAt: admin.firestore.FieldValue.serverTimestamp(),
-           updatedAt: admin.firestore.Timestamp.now(),
-           paymentProcessedAt: admin.firestore.Timestamp.now(),
-           stripePaymentId: session.payment_intent || session.id
-          });
-          
-         // Enregistrer l'événement de paiement dans un sous-collection pour l'audit
-         await orderRef.collection('paymentEvents').add({
-           type: 'payment_completed',
-           provider: 'stripe',
-           sessionId: session.id,
-           paymentIntentId: session.payment_intent,
-           amount: session.amount_total / 100, // Convertir les centimes en euros
-           currency: session.currency,
-           timestamp: admin.firestore.FieldValue.serverTimestamp(),
-           metadata: session.metadata
-         });
-
-          console.log(`Order ${orderId} updated to paid status and activated in restaurant ${restaurantId} - Webhook processed successfully`);
-          res.json({ received: true });
-          return;
-        } catch (error) {
-          console.error('Error updating order directly:', error);
-          // Continuer avec le flux normal si la mise à jour directe échoue
-        }
-      }
-
-      // Ensure idempotency - check if payment was already processed
-      const paymentSessionRef = db.collection('paymentSessions').doc(paymentSessionId);
-      const paymentSessionSnap = await paymentSessionRef.get();
-      const paymentSession = paymentSessionSnap.data();
-
-      if (!paymentSessionSnap.exists) {
-        throw new Error('Payment session not found');
-      }
-
-      if (paymentSession.status === 'completed') {
-        console.log('Payment already processed, skipping');
-        res.json({ received: true });
-        return;
-      }
-
-      // Start a transaction to ensure atomic updates
-      await db.runTransaction(async (transaction) => {
-        // Update payment session status first
-        transaction.update(paymentSessionRef, {
-          status: 'completed',
-          updatedAt: admin.firestore.Timestamp.now(),
-        });
-
-        // Create orders for each restaurant
-        const orderRefs = paymentSession.restaurants.map((restaurant) => {
-          const orderRef = db.collection('orders').doc();
-          const order = {
-            id: orderRef.id,
-            userId: paymentSession.userId,
-            restaurantId: restaurant.restaurantId,
-            items: restaurant.items,
-            amount: restaurant.amount,
-            status: 'pending', // Now the order becomes visible to restaurant admin
-            paymentStatus: 'paid', // Mark as paid
-            paymentSessionId,
-            createdAt: admin.firestore.Timestamp.now(),
-            updatedAt: admin.firestore.Timestamp.now(),
-          };
-          transaction.set(orderRef, order);
-          
-          // Also update the original order document - activate it in the dashboard
-          db.collection('restaurants')
-            .doc(restaurant.restaurantId)
-            .collection('orders')
-            .where('stripeSessionId', '==', session.id)
-            .get()
-            .then(snapshot => {
-              if (!snapshot.empty) {
-                snapshot.docs.forEach(doc => {
-                  db.collection('restaurants')
-                    .doc(restaurant.restaurantId)
-                    .collection('orders')
-                    .doc(doc.id)
-                    .update({
-                      status: 'pending',  // Changed from 'awaiting_payment' to make it visible
-                      paymentStatus: 'paid',
-                      updatedAt: admin.firestore.Timestamp.now(),
-                    });
-                });
-              }
-            })
-            .catch(err => {
-              console.error('Error updating original order:', err);
-            });
-          
-          return orderRef;
-        });
-
-        return orderRefs;
-      });
-
-      // After transaction succeeds, process Stripe transfers
-      await Promise.all(
-        paymentSession.restaurants.map(async (restaurant) => {
-          try {
-            await stripe.transfers.create({
-              amount: Math.round(restaurant.amount * 100),
-              currency: 'eur',
-              destination: restaurant.stripeAccountId,
-              transfer_group: paymentSessionId,
-            });
-          } catch (error) {
-            console.error(`Failed to transfer to restaurant ${restaurant.restaurantId}:`, error);
-            // Consider adding a retry mechanism or notification system here
-          }
-        })
-      );
-    }
-
-    res.json({ received: true });
+    event = stripe.webhooks.constructEvent(req.rawBody, sig, endpointSecret);
   } catch (error) {
     console.error('Webhook error:', error);
     // Don't expose internal error details in production
     res.status(400).send('Webhook Error');
+    return;
+  }
+
+  if (event.type === 'checkout.session.completed' || event.type === 'payment_intent.succeeded') {
+    const session = event.data.object as Stripe.Checkout.Session;
+    const { paymentSessionId } = session.metadata!;
+
+    // Ensure idempotency - check if payment was already processed
+    const paymentSessionRef = db.collection('paymentSessions').doc(paymentSessionId);
+    const paymentSessionSnap = await paymentSessionRef.get();
+    const paymentSession = paymentSessionSnap.data() as PaymentSession;
+
+    if (!paymentSessionSnap.exists) {
+      throw new Error('Payment session not found');
+    }
+
+    if (paymentSession.status === 'completed') {
+      console.log('Payment already processed, skipping');
+      res.json({ received: true });
+      return;
+    }
+
+    // Start a transaction to ensure atomic updates
+    await db.runTransaction(async (transaction) => {
+      // Update payment session status first
+      transaction.update(paymentSessionRef, {
+        status: 'completed',
+        updatedAt: admin.firestore.Timestamp.now(),
+      });
+
+      // Create orders for each restaurant
+      const orderRefs = paymentSession.restaurants.map((restaurant) => {
+        const orderRef = db.collection('orders').doc();
+        const order = {
+          id: orderRef.id,
+          userId: paymentSession.userId,
+          restaurantId: restaurant.restaurantId,
+          items: restaurant.items,
+          amount: restaurant.amount,
+          status: 'pending',
+          paymentSessionId,
+          createdAt: admin.firestore.Timestamp.now(),
+          updatedAt: admin.firestore.Timestamp.now(),
+        };
+        transaction.set(orderRef, order);
+        return orderRef;
+      });
+
+      return orderRefs;
+    });
+
+    // After transaction succeeds, process Stripe transfers
+    await Promise.all(
+      paymentSession.restaurants.map(async (restaurant) => {
+        try {
+          await stripe.transfers.create({
+            amount: Math.round(restaurant.amount * 100),
+            currency: 'eur',
+            destination: restaurant.stripeAccountId,
+            transfer_group: paymentSessionId,
+          });
+        } catch (error) {
+          console.error(`Failed to transfer to restaurant ${restaurant.restaurantId}:`, error);
+          // Consider adding a retry mechanism or notification system here
+        }
+      }),
+    );
+  }
+
+  res.json({ received: true });
+});
+
+export const retrieveCheckoutSession = functions.https.onCall(async (data, context) => {
+  // Vérifier si l'utilisateur est authentifié
+  /* if (!context.auth) {
+    throw new functions.https.HttpsError(
+      'unauthenticated',
+      'Vous devez être authentifié pour effectuer cette action.'
+    );
+  } */
+
+  const { sessionId } = data;
+
+  if (!sessionId) {
+    throw new functions.https.HttpsError(
+      'invalid-argument',
+      'L\'ID de la session est requis.'
+    );
+  }
+
+  try {
+    // Récupérer les détails de la session Stripe
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+    return {
+      id: session.id,
+      payment_status: session.payment_status,
+      amount_total: session.amount_total,
+      currency: session.currency,
+    };
+  } catch (error) {
+    console.error('Erreur lors de la récupération de la session Stripe:', error);
+    throw new functions.https.HttpsError(
+      'internal',
+      'Une erreur est survenue lors de la récupération de la session Stripe.'
+    );
   }
 });

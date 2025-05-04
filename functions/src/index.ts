@@ -116,7 +116,7 @@ export const handleOrderStatusChange = functions.firestore
   });
 
 // Webhook listener for Stripe payment completion
-export const stripeWebhookListener = functions.https.onRequest(async (req, res) => {
+/* export const stripeWebhookListener = functions.https.onRequest(async (req, res) => {
   try {
     // Verify Stripe signature
     const stripe = require('stripe')(functions.config().stripe.secret_key);
@@ -174,7 +174,7 @@ export const stripeWebhookListener = functions.https.onRequest(async (req, res) 
     console.error('Stripe webhook processing error:', error);
     res.status(500).send('Webhook processing error');
   }
-});
+}); */
 
 // Export Stripe functions
 export * from './stripe';
@@ -196,3 +196,5 @@ export const applePayDomainAssociation = functions.https.onRequest(async (req, r
     res.status(500).send('Error serving domain association file');
   }
 });
+
+export * from './mailing';

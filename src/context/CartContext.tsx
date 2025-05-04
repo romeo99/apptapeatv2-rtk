@@ -337,7 +337,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const toggleCart = () => setIsCartOpen((prev) => !prev);
 
-  const fixAnonymousUser = (value: string) => setAnonymousUser(value);
+  const fixAnonymousUser = (value: string) => { 
+    setAnonymousUser(value)
+    localStorage.setItem("anoUser", value)
+  };
 
   const subtotal =
     items && Array.isArray(items)

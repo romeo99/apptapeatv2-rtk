@@ -10,6 +10,44 @@ import {
 } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
 
+export async function generateOrderNumber(restaurantId: string, paymentMethod: string): Promise<string> {
+  try {
+    if (!restaurantId?.trim()) throw new Error('Restaurant ID is required');
+    if (!paymentMethod?.trim()) throw new Error('Payment method is required');
+
+    const counterRef = doc(db, 'restaurants', restaurantId, 'settings', 'orderCounters');
+
+    // Use transaction to ensure atomic counter increment
+    const newCounter = await runTransaction(db, async (transaction) => {
+      const counterDoc = await transaction.get(counterRef);
+
+      let counter = 1;
+      if (counterDoc.exists()) {
+        counter = (counterDoc.data()[paymentMethod] || 0) + 1;
+        if (counter > 999) counter = 1; // Reset to 1 after 999
+      }
+
+      transaction.set(counterRef, {
+        [paymentMethod]: counter,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+
+      return counter;
+    });
+
+    // Format order number
+    const prefix = paymentMethod === 'card' ? 'CB' :
+      paymentMethod === 'cash' ? 'ESP' :
+        paymentMethod === 'google_pay' ? 'GP' :
+          paymentMethod === 'apple_pay' ? 'AP' : 'CMD';
+
+    return `${prefix}${newCounter.toString().padStart(3, '0')}`;
+  } catch (error) {
+    console.error('Error generating order number:', error);
+    throw new Error('Failed to generate order number');
+  }
+}
+
 export const createOrder = async (restaurantId: string, orderData: {
   items: Array<{
     id: string;
@@ -38,24 +76,27 @@ export const createOrder = async (restaurantId: string, orderData: {
 }) => {
 
   try {
-    // Vérifier que toutes les données nécessaires sont présentes
-    if (!restaurantId) {
-      throw new Error('Restaurant ID is required');
+
+    console.log(orderData);
+
+    // Validate restaurant ID
+    if (!restaurantId?.trim()) {
+      throw new Error('ID du restaurant invalide');
     }
 
-    if (!orderData || !orderData.items || !Array.isArray(orderData.items)) {
-      throw new Error('Invalid order data: items array is required');
+    if (!Array.isArray(orderData?.items) || orderData.items.length === 0) {
+      throw new Error('La commande doit contenir au moins un article');
     }
 
     if (!orderData.paymentMethod?.trim()) {
       throw new Error('Le moyen de paiement est requis');
     }
 
-    const restaurantRef = doc(db, 'restaurants', restaurantId);
-    const restaurantDoc = await getDoc(restaurantRef);
+    // Get restaurant info first
+    const restaurantDoc = await getDoc(doc(db, 'restaurants', restaurantId));
 
     if (!restaurantDoc.exists()) {
-      throw new Error('Restaurant not found');
+      throw new Error('Restaurant invalide ou introuvable');
     }
 
     const restaurantInfo = {
@@ -64,6 +105,26 @@ export const createOrder = async (restaurantId: string, orderData: {
       id: restaurantId
     };
 
+    // Clean and validate item data
+    const cleanedItems = orderData.items.map(item => ({
+      id: item.id,
+      name: item.name?.trim() || 'Article',
+      price: Number(item.price) || 0,
+      quantity: Math.max(1, Number(item.quantity) || 1),
+      image: item.image || null,
+      remarks: typeof item.remarks === 'string' ? item.remarks.trim() || null : null,
+      sections: Array.isArray(item.sections) ? item.sections.map(section => ({
+        name: String(section.name || ''),
+        choice: String(section.choice || ''),
+        included: Boolean(section.included)
+      })) : null,
+      menuOptions: item.menuOptions ? {
+        drink: item.menuOptions.drink || null,
+        side: item.menuOptions.side || null,
+        sauces: Array.isArray(item.menuOptions.sauces) ? item.menuOptions.sauces : []
+      } : null,
+      excludedIngredients: Array.isArray(item.excludedIngredients) ? item.excludedIngredients : [],
+    }));
 
     // Get table number if present
     const orderTypeData = localStorage.getItem('orderType');
@@ -87,84 +148,27 @@ export const createOrder = async (restaurantId: string, orderData: {
       console.error('Error parsing order type:', e);
     }
 
-    // Nettoyer les données pour éviter les valeurs undefined
-    //const cleanedOrderData = JSON.parse(JSON.stringify(orderData));
-
-    const cleanedItems = orderData.items.map(item => ({
-      id: item.id,
-      name: item.name?.trim() || 'Article',
-      price: Number(item.price) || 0,
-      quantity: Math.max(1, Number(item.quantity) || 1),
-      image: item.image || null,
-      remarks: typeof item.remarks === 'string' ? item.remarks.trim() || null : null,
-      sections: Array.isArray(item.sections) ? item.sections.map(section => ({
-        name: String(section.name || ''),
-        choice: String(section.choice || ''),
-        included: Boolean(section.included)
-      })) : null,
-      menuOptions: item.menuOptions ? {
-        drink: item.menuOptions.drink || null,
-        side: item.menuOptions.side || null,
-        sauces: Array.isArray(item.menuOptions.sauces) ? item.menuOptions.sauces : []
-      } : null,
-      excludedIngredients: Array.isArray(item.excludedIngredients) ? item.excludedIngredients : [],
-    }));
-
     // Generate order number
-    const counterRef = doc(db, 'restaurants', restaurantId, 'settings', 'orderCounters');
-    const counterDoc = await getDoc(counterRef);
+    const orderNumber = orderData.orderNumber ?? await generateOrderNumber(restaurantId, orderData.paymentMethod);
 
-    let counterData = counterDoc.exists() ? counterDoc.data() : { count: 0 };
-    const nextCount = (counterData.count || 0) + 1;
-
-    // Use appropriate prefix based on payment method
-    const paymentMethodPrefix =
-      orderData.paymentMethod === 'apple_pay' ? 'AP' :
-        orderData.paymentMethod === 'google_pay' ? 'GP' :
-          orderData.paymentMethod === 'cash' ? 'ESP' : 'CB';
-
-    const orderNumber = `${paymentMethodPrefix}${nextCount}`;
-
-    // Update the counter document
-    await setDoc(counterRef, {
-      count: nextCount,
-      lastUpdated: serverTimestamp()
-    }, { merge: true });
-
-    // Configurer le statut initial et le statut de paiement selon le mode de paiement
-    let initialStatus;
-    let paymentStatus;
-
-    // Si paiement en espèces, l'ordre est immédiatement visible (pending)
-    if (orderData.paymentMethod === 'cash') {
-      initialStatus = 'pending';
-      paymentStatus = 'pending';
-    }
-    // Si paiement par carte/Apple Pay/Google Pay, l'ordre est invisible jusqu'à confirmation Stripe
-    else if (['card', 'apple_pay', 'google_pay'].includes(orderData.paymentMethod)) {
-      initialStatus = 'awaiting_payment';  // Ne sera pas visible dans le dashboard
-      paymentStatus = 'awaiting_payment';
-    }
-    // Fallback pour tout autre méthode de paiement
-    else {
-      initialStatus = 'pending';
-      paymentStatus = 'pending';
+    // Validate delivery data if needed
+    if (orderData.type === 'delivery' && !orderData.delivery?.address) {
+      throw new Error('L\'adresse de livraison est requise');
     }
 
+    // Prepare order data
     const orderToCreate = {
-      items: cleanedItems,
       restaurantId,
       restaurantInfo,
-      paymentMethod: orderData.paymentMethod, // Ensure payment method is explicitly set
+      items: cleanedItems,
       type: orderType.type,
       ...(orderType.table && { table: orderType.table }),
-      status: orderData.scheduledTime ? 'scheduled' : initialStatus,
-      paymentStatus: paymentStatus,
-      paymentAttemptTimestamp: serverTimestamp(),
-      visibleInDashboard: orderData.paymentMethod === 'cash', // Visible uniquement pour les paiements en espèces
+      status: orderData.scheduledTime ? 'scheduled' : 'pending',
+      paymentStatus: 'pending', // Always mark as paid in register mode
+      paymentMethod: orderData.paymentMethod,
       subtotal: Math.max(0, Number(orderData.subtotal) || 0),
       total: Math.max(0, Number(orderData.total) || 0),
-      orderNumber: orderData.orderNumber ?? orderNumber,
+      orderNumber: orderNumber,
       ...(tableNumber && { table: tableNumber }),
       ...(orderData.scheduledTime && {
         scheduledTime: orderData.scheduledTime
@@ -176,27 +180,26 @@ export const createOrder = async (restaurantId: string, orderData: {
           phone: String(orderData.delivery.phone).trim()
         }
       }),
-      ...(orderData.message && { message: orderData.message }),
-      ...(orderData.customerName && { customerName: orderData.customerName }),
+      message: orderData.message,
+      customerName: orderData.customerName,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
-    }
+    };
 
-    // Créer la commande
-    const ordersRef = collection(db, 'restaurants', restaurantId, 'orders');
-    const orderDoc = await addDoc(ordersRef, orderToCreate);
-
-    console.log(`Order ${orderDoc.id} created with status ${initialStatus} and payment status ${paymentStatus}`);
+    // Create order in restaurant's orders collection
+    const ordersRef = collection(db, 'restaurants', restaurantDoc.id, 'orders');
+    const orderRef = await addDoc(ordersRef, orderToCreate);
+    const orderId = orderRef.id;
 
     // If in register mode, don't save to user's orders
     const isRegisterMode = new URLSearchParams(window.location.search).get('mode') === 'register';
     if (isRegisterMode) {
       // Mark order as paid immediately in register mode
-      await updateDoc(orderDoc, {
+      await updateDoc(orderRef, {
         paymentStatus: 'paid',
         updatedAt: serverTimestamp()
       });
-      return orderDoc.id;
+      return orderId;
     }
 
     // Update restaurant stats in a transaction to avoid race conditions
@@ -251,6 +254,7 @@ export const createOrder = async (restaurantId: string, orderData: {
     });
 
     // Update restaurant stats
+    const restaurantRef = doc(db, 'restaurants', restaurantId);
     const statsDoc = await getDoc(restaurantRef);
     const currentStats = statsDoc.data()?.stats || {
       totalRevenue: 0,
@@ -293,17 +297,19 @@ export const createOrder = async (restaurantId: string, orderData: {
     // If user is authenticated, save to their orders collection
     const currentUser = auth.currentUser;
     if (currentUser) {
-      const userOrderRef = doc(db, 'users', currentUser.uid, 'orders', orderDoc.id);
+      const userOrderRef = doc(db, 'users', currentUser.uid, 'orders', orderId);
       await setDoc(userOrderRef, {
         ...orderToCreate,
-        id: orderDoc.id
+        id: orderId
       });
     }
 
-    return orderDoc.id;
+    return orderId;
   } catch (error) {
     console.error('Error creating order:', error);
-    throw error;
+    throw error instanceof Error
+      ? error
+      : new Error('Une erreur est survenue lors de la création de la commande');
   }
 };
 
