@@ -24,6 +24,18 @@ if (!isStackBlitz && 'serviceWorker' in navigator) {
   });
 }
 
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker
+    .register('/fm-sw.js')
+    .then((registration) => {
+      console.log('Service worker enregistré :', registration);
+    })
+    .catch((err) => {
+      console.error('Erreur en enregistrant le service worker :', err);
+    });
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>

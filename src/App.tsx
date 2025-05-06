@@ -15,6 +15,7 @@ import ResetPasswordPage from './pages/auth/ResetPassword';
 import SignIn from './pages/auth/SignIn';
 import SignUpPage from './pages/auth/SignUpPage';
 import ProductCustomization from './pages/ProductCustomization';
+import Finances from './pages/superadmin/Finances';
 import FirstTimeSetup from './pages/superadmin/FirstTimeSetup';
 import { FoodCourtDetails as AdminFoodCourtDetails, FoodCourtForm, FoodCourtManagement, FoodCourtRestaurantAdd } from './pages/superadmin/foodCourt';
 import RestaurantDetails from './pages/superadmin/RestaurantDetails';
@@ -23,7 +24,6 @@ import SuperAdminDashboard from './pages/superadmin/SuperAdminDashboard';
 import SuperAdminLogin from './pages/superadmin/SuperAdminLogin';
 import UserDetails from './pages/superadmin/UserDetails';
 import UserManagement from './pages/superadmin/UserManagement';
-import Finances from './pages/superadmin/Finances';
 import DiscoverPage from './pages/user/DiscoverPage';
 import FavoritesPage from './pages/user/FavoritesPage';
 import FoodCourtDetails from './pages/user/FoodCourtDetails';
@@ -38,6 +38,7 @@ import ScanPage from './pages/user/ScanPage';
 // Admin imports
 import ProtectedRoute from './components/admin/ProtectedRoute';
 import UpdatePrompt from './components/UpdatePrompt';
+import { getToken, messaging, onMessage } from './config/firebase';
 import { CartProvider } from './context/CartContext';
 import { OrderProvider } from './context/OrderContext';
 import { RestaurantProvider } from './context/RestaurantContext';
@@ -61,21 +62,45 @@ import OptionsSettings from './pages/admin/settings/OptionsSettings';
 import ProfileSettings from './pages/admin/settings/ProfileSettings';
 import QrCodeSettings from './pages/admin/settings/QrCodeSettings';
 import RestaurantSettings from './pages/admin/settings/RestaurantSettings';
-import ThemeSettings from './pages/admin/settings/ThemeSettings';
+import StripeConnect from './pages/admin/settings/stripe-connect';
 import StripeSettings from './pages/admin/settings/StripeSettings';
+import ThemeSettings from './pages/admin/settings/ThemeSettings';
 import StaffManagement from './pages/admin/StaffManagement';
 import Support from './pages/admin/Support';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import DeliveryTracking from './pages/driver/DeliveryTracking';
 import DriverDashboard from './pages/driver/DriverDashboard';
-import StripeConnect from './pages/admin/settings/stripe-connect';
 
 export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
   const [showSplash, setShowSplash] = useState(true);
   const [initialized, setInitialized] = useState(false);
+
+  const vapidKey = "BDVe_onL6Lcmwaxw9TBTF_XQ6SD0MbxxA9zPZ14Xws1CFljXxtQd9LLg2oPF2TxzWXBQtUGvWYCsTClv95MUyuI";
+
+  useEffect(() => {
+    Notification.requestPermission().then(permission => {
+      if (permission === 'granted') {
+        getToken(messaging, { vapidKey }).then((currentToken) => {
+          if (currentToken) {
+            console.log('Token de notification FCM:', currentToken);
+            // Tu peux l’envoyer à Firebase DB ou Firestore
+          } else {
+            console.warn('Aucun token disponible. Demande de permission requise.');
+          }
+        }).catch((err) => {
+          console.error('Erreur lors de la récupération du token:', err);
+        });
+      }
+    });
+
+    onMessage(messaging, (payload) => {
+      console.log('Message reçu en foreground:', payload);
+      alert(`Notification: ${payload.notification!.title} - ${payload.notification!.body}`);
+    });
+  }, []);
 
   // Add class to body for admin pages
   useEffect(() => {
