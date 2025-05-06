@@ -170,7 +170,7 @@ export default function Checkout() {
         type: orderType.type,
         subtotal: parseFloat(subtotal.toFixed(2)),
         total: parseFloat(total.toFixed(2)),
-        customerName: user ? user.displayName : anonymousUser,
+        customerName: !user || isRegisterMode ? anonymousUser : user.displayName,
         paymentMethod: selectedMethod,
         paymentStatus: selectedMethod === 'cash' ? 'pending' : 'paid',
         scheduledTime,
@@ -198,7 +198,7 @@ export default function Checkout() {
         total: parseFloat(total.toFixed(2)),
         paymentMethod: selectedMethod,
         message: message,
-        customerName: user ? user.displayName : anonymousUser,
+        customerName: !user || isRegisterMode ? anonymousUser : user.displayName,
         orderNumber: orderNumber,
         scheduledTime,
         ...(deliveryInfo && { delivery: deliveryInfo })
@@ -283,31 +283,6 @@ export default function Checkout() {
     }
   };
 
-  const handleSuccessfulOrder = async (orderId: string) => {
-    try {
-      clearCart();
-      localStorage.removeItem('foodCourtId');
-      localStorage.removeItem('deliveryInfo');
-
-      if (isFoodCourtOrder && foodCourtId) {
-        navigate(`/order-confirmation${isRegisterMode ? '?mode=register' : ''}`, {
-          state: { foodCourtId },
-          replace: true
-        });
-      } else {
-        navigate(`/order-confirmation${isRegisterMode ? '?mode=register' : ''}`, {
-          state: { orderId, restaurantId: restaurantData?.id },
-          replace: true
-        });
-      }
-    } catch (error) {
-      console.error('Order error:', error);
-      setError('Une erreur est survenue lors de la commande.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // Fonction principale de gestion du paiement
   const handlePayment = async () => {
     setLoading(true);
@@ -360,53 +335,11 @@ export default function Checkout() {
       // Si tout est bon, effacer les erreurs
       setError(null);
     }
-
-    /* try {
-      // Pour les paiements en espèces ou en mode caisse, créer et confirmer la commande immédiatement
-      if (selectedMethod === 'cash' || isRegisterMode) {
-        // Pour les paiements en espèces, créer la commande avec un statut 'pending'
-        const cashOrderData = prepareOrderData(selectedMethod);
-
-        let orderId: string | string[] | void = isFoodCourtOrder
-          ? await createFoodCourtOrder(foodCourtId!, cashOrderData)
-          : await createOrder(restaurantData?.id!, {
-            ...cashOrderData,
-            paymentMethod: selectedMethod
-          });
-
-        if (!orderId) {
-          throw new Error('Erreur lors de la création de la commande');
-        }
-
-        // Commande créée avec succès pour paiement en espèces
-        await handleSuccessfulOrder(Array.isArray(orderId) ? orderId[0] : orderId);
-      }
-      // Pour les paiements par carte ou Apple Pay (non mode caisse)
-      else if ((selectedMethod === 'card' || selectedMethod === 'apple_pay' || selectedMethod === 'google_pay') && !isRegisterMode) {
-        // Pour les paiements en ligne, créer la commande avec un statut 'awaiting_payment'
-        // Use 'card' as the payment method for all online payments to ensure consistent processing
-        const orderData = prepareOrderData('card');
-        let orderId: string | string[] | void = isFoodCourtOrder
-          ? await createFoodCourtOrder(foodCourtId!, orderData)
-          : await createOrder(restaurantData?.id!, orderData);
-
-        if (!orderId) {
-          throw new Error('Erreur lors de la création de la commande');
-        }
-
-        const orderIdStr = Array.isArray(orderId) ? orderId[0] : orderId;
-        await processStripePayment(orderIdStr);
-      }
-    } catch (error) {
-      console.error('Order error:', error);
-      setError('Une erreur est survenue lors de la commande.');
-      setLoading(false);
-    } */
-
+    
     try {
       const orderData = await prepareOrderData(selectedMethod);
 
-      if ((selectedMethod === 'card' && !isRegisterMode) || selectedMethod === 'apple_pay') {
+      if ((selectedMethod === 'card' || selectedMethod === 'apple_pay' || selectedMethod === 'google_pay') && !isRegisterMode) {
         const paymentResult = await processPayment();
         if (!paymentResult) {
           throw new Error('Erreur lors du traitement du paiement.');
@@ -426,10 +359,11 @@ export default function Checkout() {
         order: orderData,
       });
 
-      if (!((selectedMethod === 'card' && !isRegisterMode) || selectedMethod === 'apple_pay')) {
+      if (selectedMethod === 'cash' && !isRegisterMode) {
         clearCart();
         localStorage.removeItem('foodCourtId');
         localStorage.removeItem('deliveryInfo');
+        localStorage.removeItem('anoUser');
         if (isFoodCourtOrder && foodCourtId) {
           navigate(`/order-confirmation${isRegisterMode ? '?mode=register' : ''}`, {
             state: { foodCourtId },
@@ -442,6 +376,14 @@ export default function Checkout() {
           });
         }
         setLoading(false);
+      } else if (isRegisterMode) {
+        clearCart();
+        localStorage.removeItem('foodCourtId');
+        localStorage.removeItem('deliveryInfo');
+        localStorage.removeItem('anoUser');
+        navigate(`/restaurant?restaurantId=${restaurantId}&mode=register`, {
+          replace: true
+        });
       }
       setLoading(false);
     } catch (error) {
@@ -452,9 +394,10 @@ export default function Checkout() {
   };
 
   useEffect(() => {
-    if (sessionId && nbLaunch === 0) {
+    if (sessionId) {
       setLoading(true);
       const functions = getFunctions();
+      const sendEmail = httpsCallable(functions, 'sendOrderConfirmation');
       const retrieveCheckoutSession = httpsCallable(functions, 'retrieveCheckoutSession');
 
       retrieveCheckoutSession({ sessionId })
@@ -473,23 +416,26 @@ export default function Checkout() {
                 throw new Error('Erreur lors de la création de la commande');
               }
 
-              if (!isRegisterMode) {
-                clearCart();
-                localStorage.removeItem('foodCourtId');
-                localStorage.removeItem('deliveryInfo');
-                localStorage.removeItem('anoUser');
-                if (isFoodCourtOrder && foodCourtId) {
-                  navigate(`/order-confirmation${isRegisterMode ? '?mode=register' : ''}`, {
-                    state: { foodCourtId },
-                    replace: true
-                  });
-                } else {
-                  navigate(`/order-confirmation${isRegisterMode ? '?mode=register' : ''}`, {
-                    state: { orderId, restaurantId: restaurantId },
-                    replace: true
-                  });
-                }
-                setLoading(false);
+              await sendEmail({
+                to: 'melesusuaris@gmail.com',
+                subject: 'Merci pour votre commande',
+                order: orderData,
+              });
+
+              clearCart();
+              localStorage.removeItem('foodCourtId');
+              localStorage.removeItem('deliveryInfo');
+              localStorage.removeItem('anoUser');
+              if (isFoodCourtOrder && foodCourtId) {
+                navigate(`/order-confirmation${isRegisterMode ? '?mode=register' : ''}`, {
+                  state: { foodCourtId },
+                  replace: true
+                });
+              } else {
+                navigate(`/order-confirmation${isRegisterMode ? '?mode=register' : ''}`, {
+                  state: { orderId, restaurantId: restaurantId },
+                  replace: true
+                });
               }
               setLoading(false);
             } catch (error) {
@@ -506,7 +452,6 @@ export default function Checkout() {
           console.error('Error retrieving checkout session:', error);
         })
         .finally(() => setLoading(false));
-      setNbLaunch(1);
     } else {
       setLoading(false);
     }

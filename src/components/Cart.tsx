@@ -1,6 +1,6 @@
 import { Calendar, Minus, Plus, Trash2, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { useRestaurantContext } from '../context/RestaurantContext';
@@ -15,6 +15,9 @@ function Cart() {
   const { user } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [anonymousUserError, setAnonymousUserError] = useState('');
+
+  const [searchParams] = useSearchParams();
+  const isRegisterMode = searchParams.get('mode') === 'register';
 
   useEffect(() => {
     const loadRestaurantNames = async () => {
@@ -77,13 +80,17 @@ function Cart() {
 
   const handleCheckout = () => {
     const restaurantId = items[0]?.restaurantId;
+    const isRegisterMode = new URLSearchParams(window.location.search).get('mode') === 'register';
     if (!user && !anonymousUser.trim()) {
+      if (isRegisterMode) {
+        setAnonymousUserError('Vous devez saisir le prénom du client pour continuer.');
+        return
+      }
       setAnonymousUserError('Vous devez saisir votre prénom pour continuer.');
       return;
     }
 
     toggleCart();
-    const isRegisterMode = new URLSearchParams(window.location.search).get('mode') === 'register';
     navigate(`/checkout?restaurantId=${restaurantId}${isRegisterMode ? '&mode=register' : ''}${isFoodCourtOrder ? `&foodCourtId=${foodCourtId}` : ''}`);
   };
 
@@ -149,8 +156,8 @@ function Cart() {
               <div className="text-center text-gray-500 mt-8">Votre panier est vide</div>
             ) : (
               <div className="space-y-6">
-                {!user && <div className=" w-full max-w-sm rounded-lg bg-white">
-                  <h2 className="font-medium text-lg mb-2">Saisir votre prénom</h2>
+                {(!user || isRegisterMode) && <div className=" w-full max-w-sm rounded-lg bg-white">
+                  <h2 className="font-medium text-lg mb-2">{isRegisterMode ? "Saisir le prénom du client" : "Saisir votre prénom"}</h2>
                   <input
                     type="text"
                     className="w-full rounded-md border border-gray-300 p-2 mb-2 focus:outline-none focus:ring focus:ring-primary"

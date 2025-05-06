@@ -1,5 +1,5 @@
+import { Building2, CreditCard, Palette, QrCode, Store, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { Store, CreditCard, QrCode, Building2, User, Palette } from 'lucide-react';
 import AdminLayout from '../../../components/admin/AdminLayout';
 
 const settingsMenus = [
@@ -35,8 +35,8 @@ const settingsMenus = [
     id: 'banking',
     name: 'Paiements',
     description: 'Configurer vos comptes bancaires',
-    icon: CreditCard, 
-    path: '/admin/settings/stripe'
+    icon: CreditCard,
+    path: '/admin/settings/stripe-connect'
   },
   {
     id: 'profile',

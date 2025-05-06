@@ -225,7 +225,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
         {/* Menu client en mode caisse */}
         {isRegisterMode && restaurant?.id && location.pathname === '/admin/live-orders' && (
-          <div className="fixed right-0 top-20 bottom-0 w-1/3 bg-white border-l border-gray-200 overflow-hidden">
+          <div className="fixed right-0 top-20 bottom-0 w-full bg-white border-l border-gray-200 overflow-hidden">
             <div className="w-full h-full">
               <iframe
                 id="orders-iframe"

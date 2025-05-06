@@ -1,9 +1,7 @@
-import { doc, getDoc } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { AlertCircle, Loader2, Lock, Mail } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { db } from '../../config/firebase';
 import { useRestaurantContext } from '../../context/RestaurantContext';
 import { signIn } from '../../services/authService';
 
@@ -50,7 +48,8 @@ export default function Login() {
 
       // Redirect based on user role
       if (result.role === 'owner' || result.role === 'staff') {
-        //Récupération du restaurant de l'utilisateur
+        navigate('/admin/live-orders');
+        /* //Récupération du restaurant de l'utilisateur
         const restaurantDoc = await getDoc(doc(db, 'restaurants', result.user.uid));
         const restaurantData = restaurantDoc.data();
         if (!restaurantData!.stripeAccountId) {
@@ -59,7 +58,7 @@ export default function Login() {
           handleConnectStripe();
         } else {
           navigate('/admin/live-orders');
-        }
+        } */
       } else {
         throw new Error('Accès non autorisé');
       }
