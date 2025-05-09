@@ -37,8 +37,8 @@ import ScanPage from './pages/user/ScanPage';
 
 // Admin imports
 import ProtectedRoute from './components/admin/ProtectedRoute';
+import DriverProtectedRoute from './components/driver/DriverProtectedRoute';
 import UpdatePrompt from './components/UpdatePrompt';
-import { getToken, messaging, onMessage } from './config/firebase';
 import { CartProvider } from './context/CartContext';
 import { OrderProvider } from './context/OrderContext';
 import { RestaurantProvider } from './context/RestaurantContext';
@@ -48,6 +48,7 @@ import CategoryForm from './pages/admin/CategoryForm';
 import CategoryManagement from './pages/admin/CategoryManagement';
 import ComboForm from './pages/admin/ComboForm';
 import ComboManagement from './pages/admin/ComboManagement';
+import DriversManagement from './pages/admin/DriversManagement';
 import IngredientsManagement from './pages/admin/IngredientsManagement';
 import InventoryManagement from './pages/admin/InventoryManagement';
 import LiveOrders from './pages/admin/LiveOrders';
@@ -68,7 +69,9 @@ import ThemeSettings from './pages/admin/settings/ThemeSettings';
 import StaffManagement from './pages/admin/StaffManagement';
 import Support from './pages/admin/Support';
 import Login from './pages/auth/Login';
+import LoginDriver from './pages/auth/LoginDriver';
 import Register from './pages/auth/Register';
+import RegisterDriver from './pages/auth/RegisterDriver';
 import DeliveryTracking from './pages/driver/DeliveryTracking';
 import DriverDashboard from './pages/driver/DriverDashboard';
 
@@ -77,30 +80,6 @@ export default function App() {
   const location = useLocation();
   const [showSplash, setShowSplash] = useState(true);
   const [initialized, setInitialized] = useState(false);
-
-  const vapidKey = "BDVe_onL6Lcmwaxw9TBTF_XQ6SD0MbxxA9zPZ14Xws1CFljXxtQd9LLg2oPF2TxzWXBQtUGvWYCsTClv95MUyuI";
-
-  useEffect(() => {
-    Notification.requestPermission().then(permission => {
-      if (permission === 'granted') {
-        getToken(messaging, { vapidKey }).then((currentToken) => {
-          if (currentToken) {
-            console.log('Token de notification FCM:', currentToken);
-            // Tu peux l’envoyer à Firebase DB ou Firestore
-          } else {
-            console.warn('Aucun token disponible. Demande de permission requise.');
-          }
-        }).catch((err) => {
-          console.error('Erreur lors de la récupération du token:', err);
-        });
-      }
-    });
-
-    onMessage(messaging, (payload) => {
-      console.log('Message reçu en foreground:', payload);
-      alert(`Notification: ${payload.notification!.title} - ${payload.notification!.body}`);
-    });
-  }, []);
 
   // Add class to body for admin pages
   useEffect(() => {
@@ -232,6 +211,7 @@ export default function App() {
                           <Route path="/settings/banking" element={<BankingSettings />} />
                           <Route path="/settings/stripe" element={<StripeSettings />} />
                           <Route path="/settings/profile" element={<ProfileSettings />} />
+                          <Route path="/settings/drivers" element={<DriversManagement />} />
                           <Route path="/settings/stripe-connect" element={<StripeConnect />} />
                           <Route path="/support" element={<Support />} />
                         </Routes>
@@ -240,13 +220,17 @@ export default function App() {
                   />
 
                   {/* Routes driver */}
+                  <Route path="/driver/login" element={<LoginDriver />} />
+                  <Route path="/driver/register" element={<RegisterDriver />} />
                   <Route
                     path="/driver/*"
                     element={
-                      <Routes>
-                        <Route path="/" element={<DriverDashboard />} />
-                        <Route path="/delivery/:orderId" element={<DeliveryTracking />} />
-                      </Routes>
+                      <DriverProtectedRoute>
+                        <Routes>
+                          <Route path="/" element={<DriverDashboard />} />
+                          <Route path="/delivery/:orderId" element={<DeliveryTracking />} />
+                        </Routes>
+                      </DriverProtectedRoute>
                     }
                   />
                 </Routes>

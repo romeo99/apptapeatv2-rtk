@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { Clock, LogOut, MapPin, Navigation, Power } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Navigation, Power, Clock } from 'lucide-react';
 import { useOrderContext } from '../../context/OrderContext';
+import { signOut } from '../../services/authService';
 import type { Order } from '../../types/firebase';
 
 export default function DriverDashboard() {
@@ -21,12 +22,12 @@ export default function DriverDashboard() {
 
   useEffect(() => {
     updateAvailableOrders();
-    
+
     const intervalId = setInterval(updateAvailableOrders, 3000);
     const handleOrdersUpdate = () => updateAvailableOrders();
-    
+
     window.addEventListener('ordersUpdated', handleOrdersUpdate);
-    
+
     return () => {
       clearInterval(intervalId);
       window.removeEventListener('ordersUpdated', handleOrdersUpdate);
@@ -53,17 +54,25 @@ export default function DriverDashboard() {
                 {availableOrders.length} commande{availableOrders.length !== 1 ? 's' : ''} en attente
               </p>
             </div>
-            <button
-              onClick={() => setIsOnline(!isOnline)}
-              className={`px-4 py-2 rounded-full flex items-center gap-2 ${
-                isOnline 
-                  ? 'bg-emerald-500 text-white' 
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => setIsOnline(!isOnline)}
+                className={`px-4 py-2 rounded-full flex items-center gap-2 ${isOnline
+                  ? 'bg-emerald-500 text-white'
                   : 'bg-gray-100 text-gray-600'
-              }`}
-            >
-              <Power className="h-4 w-4" />
-              <span>{isOnline ? 'En ligne' : 'Hors ligne'}</span>
-            </button>
+                  }`}
+              >
+                <Power className="h-4 w-4" />
+                <span>{isOnline ? 'En ligne' : 'Hors ligne'}</span>
+              </button>
+              <button
+                onClick={async () => await signOut({ isDriver: true })}
+                className={`p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors`}
+                title='Déconnexion'
+              >
+                <LogOut className="h-4 w-4" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -73,7 +82,7 @@ export default function DriverDashboard() {
           availableOrders.length > 0 ? (
             <div className="space-y-4">
               {availableOrders.map((order) => (
-                <div 
+                <div
                   key={order.id}
                   className="bg-white rounded-xl shadow-sm p-4"
                 >
@@ -136,6 +145,6 @@ export default function DriverDashboard() {
           </div>
         )}
       </div>
-    </div>
+    </div >
   );
 }

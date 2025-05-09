@@ -15,8 +15,8 @@ import {
   serverTimestamp,
   setDoc,
   updateDoc,
-  writeBatch,
-  where
+  where,
+  writeBatch
 } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
 import { getCoordsFromAddress } from './locationService';
@@ -218,7 +218,7 @@ function generateSearchTerms(name: string): string[] {
   return [...new Set(terms)];
 }
 
-export async function registerUser(data: RegisterData) {
+export async function registerUser(data: RegisterData, isDriver: boolean = false) {
   try {
     // Create user in Firebase Auth
     const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
@@ -237,6 +237,10 @@ export async function registerUser(data: RegisterData) {
       firstName: data.firstName,
       lastName: data.lastName,
       phone: data.phone,
+      ...isDriver && {
+        role: 'driver',
+        status: 'active'
+      },
       displayName: `${data.firstName} ${data.lastName}`,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
@@ -335,8 +339,11 @@ export async function signIn(email: string, password: string) {
       };
     }
 
+    const userDoc = await getDoc(userRef);
+    const userData = userDoc.data();
+
     // Regular user
-    return { user, role: 'user' };
+    return { user, role: userData?.role || 'user' };
 
   } catch (error: any) {
     console.error('Error signing in:', error);
@@ -352,7 +359,7 @@ export async function signIn(email: string, password: string) {
   }
 }
 
-export async function signOut(isAdmin: boolean = false) {
+export async function signOut({ isAdmin = false, isDriver = false }: { isAdmin?: boolean; isDriver?: boolean }) {
   try {
     await firebaseSignOut(auth);
     // Clear auth data from localStorage
@@ -362,6 +369,8 @@ export async function signOut(isAdmin: boolean = false) {
 
     if (isAdmin) {
       window.location.replace('/admin/login');
+    } else if (isDriver) {
+      window.location.replace('/driver/login');
     } else {
       window.location.reload();
     }

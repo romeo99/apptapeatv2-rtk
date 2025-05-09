@@ -82,10 +82,7 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
 
       // Log pour le débogage
       console.log(`Order ${orderId} status updated to ${status} with payment status ${updates.paymentStatus || orderData.paymentStatus}`);
-      // Log pour le débogage
-      console.log(`Order ${orderId} status updated to ${status} with payment status ${updates.paymentStatus || orderData.paymentStatus}`);
 
-      // Envoyer une notification au client si l'ordre a un userId
       // Envoyer une notification au client si l'ordre a un userId
       const order = orders.find(o => o.id === orderId);
       if (order?.userId) {

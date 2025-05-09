@@ -1,8 +1,8 @@
+import { Edit2, MapPin, Phone, Plus, Search, Trash2 } from 'lucide-react';
 import { useState } from 'react';
-import { Plus, Search, Edit2, Trash2, MapPin, Phone } from 'lucide-react';
 import AdminLayout from '../../components/admin/AdminLayout';
-import LoadingSpinner from '../../components/LoadingSpinner';
 import DriverForm from '../../components/admin/DriverForm';
+import LoadingSpinner from '../../components/LoadingSpinner';
 import { useDrivers } from '../../hooks/useDrivers';
 
 const STATUS_COLORS = {
@@ -152,11 +152,10 @@ export default function DriversManagement() {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      STATUS_COLORS[driver.status as keyof typeof STATUS_COLORS]
-                    }`}>
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[driver.status as keyof typeof STATUS_COLORS]
+                      }`}>
                       {driver.status === 'available' ? 'Disponible' :
-                       driver.status === 'busy' ? 'En livraison' : 'Hors ligne'}
+                        driver.status === 'busy' ? 'En livraison' : 'Hors ligne'}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">

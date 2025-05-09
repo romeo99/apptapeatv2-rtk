@@ -44,7 +44,14 @@ const settingsMenus = [
     description: 'Gérer votre compte et vos accès',
     icon: User,
     path: '/admin/settings/profile'
-  }
+  },
+  {
+    id: 'driver',
+    name: 'Mes livreurs',
+    description: 'Gérer vos livreurs et leurs accès',
+    icon: User,
+    path: '/admin/settings/drivers'
+  },
 ];
 
 export default function Settings() {

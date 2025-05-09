@@ -1,12 +1,9 @@
-import { Navigate, useNavigate } from 'react-router-dom';
+import { collectionGroup, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
+import { useEffect, useState } from 'react';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { db } from '../../config/firebase';
 import { useAuth } from '../../context/AuthContext';
 import LoadingSpinner from '../LoadingSpinner';
-import { useState, useEffect } from 'react';
-import { doc, getDoc, collection, query, where, getDocs, collectionGroup } from 'firebase/firestore';
-import { db } from '../../config/firebase';
-import { useLocation } from 'react-router-dom';
-import { checkImpersonation } from '../../services/authService';
-import { serverTimestamp, updateDoc } from 'firebase/firestore';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -69,7 +66,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
             where('uid', '==', user.uid)
           );
           const staffDocs = await getDocs(staffQuery);
-          
+
           if (!staffDocs.empty) {
             setUserRole('staff');
             const restaurantId = staffDocs.docs[0].ref.parent.parent?.id;

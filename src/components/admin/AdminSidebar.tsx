@@ -112,7 +112,7 @@ export default function AdminSidebar({ onClose }: AdminSidebarProps) {
 
   const handleLogout = async () => {
     try {
-      await signOut();
+      await signOut({});
       navigate('/login');
     } catch (err) {
       console.error('Error logging out:', err);

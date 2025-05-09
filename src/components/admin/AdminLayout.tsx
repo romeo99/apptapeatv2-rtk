@@ -25,7 +25,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
   const handleLogout = async () => {
     try {
-      await signOut(true); // Pass true to indicate admin logout
+      await signOut({ isAdmin: true }); // Pass true to indicate admin logout
     } catch (err) {
       console.error('Error logging out:', err);
     }

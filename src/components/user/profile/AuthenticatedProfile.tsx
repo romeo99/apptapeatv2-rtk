@@ -37,7 +37,7 @@ export default function AuthenticatedProfile() {
 
   const handleLogout = async () => {
     try {
-      await signOut();
+      await signOut({});
     } catch (err) {
       console.error('Error logging out:', err);
     }

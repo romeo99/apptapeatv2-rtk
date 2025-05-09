@@ -1,8 +1,10 @@
 import { collection, doc, getDoc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { db, getToken, messaging, onMessage } from '../config/firebase';
+
+const vapidKey = "BDVe_onL6Lcmwaxw9TBTF_XQ6SD0MbxxA9zPZ14Xws1CFljXxtQd9LLg2oPF2TxzWXBQtUGvWYCsTClv95MUyuI";
 
 export async function requestNotificationPermission(userId: string) {
-  try {
+  /* try {
     const permission = await Notification.requestPermission();
     if (permission === 'granted') {
       // Register service worker if not already registered
@@ -24,7 +26,34 @@ export async function requestNotificationPermission(userId: string) {
   } catch (error) {
     console.error('Error requesting notification permission:', error);
     return false;
+  } */
+
+  const permission = await Notification.requestPermission();
+  if (permission === 'granted') {
+    getToken(messaging, { vapidKey }).then(async (currentToken) => {
+      if (currentToken) {
+        console.log('Token de notification FCM:', currentToken);
+
+        // Tu peux l’envoyer à Firebase DB ou Firestore
+        // Save token to user's document
+        const userRef = doc(db, 'users', userId);
+        await updateDoc(userRef, {
+          notificationsEnabled: true,
+          token: currentToken,
+          updatedAt: serverTimestamp()
+        });
+      } else {
+        console.warn('Aucun token disponible. Demande de permission requise.');
+      }
+    }).catch((err) => {
+      console.error('Erreur lors de la récupération du token:', err);
+    });
   }
+
+  onMessage(messaging, (payload) => {
+    console.log('Message reçu en foreground:', payload);
+    alert(`Notification: ${payload.notification!.title} - ${payload.notification!.body}`);
+  });
 }
 
 export async function sendOrderNotification(userId: string, orderId: string, status: string) {

@@ -1,7 +1,10 @@
-import { useState, useEffect } from 'react';
-import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { sendPasswordResetEmail } from 'firebase/auth';
+import { collection, deleteDoc, doc, onSnapshot, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
+import { useEffect, useState } from 'react';
+import { auth, db } from '../config/firebase';
 import { useRestaurantContext } from '../context/RestaurantContext';
+import { registerUser } from '../services/authService';
+import { generatePassword } from '../utils/passwordGenerator';
 
 export interface Driver {
   id: string;
@@ -12,7 +15,7 @@ export interface Driver {
   vehicleNumber: string;
   zone: string;
   status: 'available' | 'busy' | 'offline';
-  restaurantId: string;
+  restaurantId?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -47,14 +50,28 @@ export function useDrivers() {
 
   const addDriver = async (data: Omit<Driver, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
+      // Generate a random password
+      const password = generatePassword();
+
       if (!restaurant?.id) throw new Error('Restaurant ID is required');
-      
-      await addDoc(collection(db, 'restaurants', restaurant.id, 'drivers'), {
+
+      const driverUser = await registerUser({
+        email: data.email,
+        password: password,
+        phone: data.phone,
+        firstName: '',
+        lastName: data.name,
+      }, true);
+
+      await setDoc(doc(db, 'restaurants', restaurant.id, 'drivers', driverUser.uid), {
         ...data,
         restaurantId: restaurant.id,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       });
+
+      // Send password reset email
+      await sendPasswordResetEmail(auth, data.email);
     } catch (err) {
       console.error('Error adding driver:', err);
       throw err;
@@ -64,7 +81,7 @@ export function useDrivers() {
   const updateDriver = async (driverId: string, data: Partial<Driver>) => {
     try {
       if (!restaurant?.id) throw new Error('Restaurant ID is required');
-      
+
       const driverRef = doc(db, 'restaurants', restaurant.id, 'drivers', driverId);
       await updateDoc(driverRef, {
         ...data,
@@ -79,7 +96,7 @@ export function useDrivers() {
   const deleteDriver = async (driverId: string) => {
     try {
       if (!restaurant?.id) throw new Error('Restaurant ID is required');
-      
+
       await deleteDoc(doc(db, 'restaurants', restaurant.id, 'drivers', driverId));
     } catch (err) {
       console.error('Error deleting driver:', err);
