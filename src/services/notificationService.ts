@@ -1,7 +1,7 @@
 import { collection, doc, getDoc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 import { db, getToken, messaging, onMessage } from '../config/firebase';
 
-const vapidKey = "BDVe_onL6Lcmwaxw9TBTF_XQ6SD0MbxxA9zPZ14Xws1CFljXxtQd9LLg2oPF2TxzWXBQtUGvWYCsTClv95MUyuI";
+const vapidKey = "BGIH8rTk75riG0Qsf50gDOlxnNRgEOkfJmnUuT_muVPU8Rh7Y6VIbRmZYQbR91wc8duWyCIaSU86FDiTFAB2kv8";
 
 export async function requestNotificationPermission(userId: string) {
   /* try {

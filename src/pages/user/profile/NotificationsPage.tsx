@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react';
+import { ChevronLeft } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, Loader2 } from 'lucide-react';
+import { getToken, messaging, onMessage } from '../../../config/firebase';
+import { useAuth } from '../../../context/AuthContext';
 import { getUserNotificationSettings, updateNotificationSettings } from '../../../services/userService';
 
 export default function NotificationsPage() {
@@ -12,6 +14,8 @@ export default function NotificationsPage() {
     promotions: true,
     newsletter: false
   });
+
+  const { user } = useAuth();
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -33,7 +37,7 @@ export default function NotificationsPage() {
         ...settings,
         [setting]: !settings[setting]
       };
-      
+
       await updateNotificationSettings(newSettings);
       setSettings(newSettings);
     } catch (err) {
@@ -42,6 +46,32 @@ export default function NotificationsPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    // Demande de permission et récupération du token
+    Notification.requestPermission().then((permission) => {
+      if (permission === 'granted') {
+        getToken(messaging, { vapidKey: 'BGIH8rTk75riG0Qsf50gDOlxnNRgEOkfJmnUuT_muVPU8Rh7Y6VIbRmZYQbR91wc8duWyCIaSU86FDiTFAB2kv8' })
+          .then((currentToken) => {
+            if (currentToken) {
+              console.log('Token:', currentToken);
+              // Enregistrer le token côté serveur ici
+            } else {
+              console.warn('Aucun token dispo');
+            }
+          })
+          .catch(err => console.error('Erreur de récupération du token:', err));
+      }
+    });
+
+    // Ecoute des notifications en foreground
+    onMessage(messaging, (payload) => {
+      console.log('Message reçu en foreground:', payload);
+      const { title, body } = payload.notification;
+      // Afficher la notif custom ou via toast
+      new Notification(title, { body });
+    });
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50">

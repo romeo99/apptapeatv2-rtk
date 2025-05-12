@@ -12,7 +12,7 @@ const isStackBlitz = window.location.hostname.includes('stackblitz') ||
   window.location.hostname.includes('webcontainer');
 
 // Only register service worker if not in StackBlitz and browser supports it
-if (!isStackBlitz && 'serviceWorker' in navigator) {
+/* if (!isStackBlitz && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
       .then(registration => {
@@ -22,18 +22,20 @@ if (!isStackBlitz && 'serviceWorker' in navigator) {
         console.log('SW registration failed:', error);
       });
   });
-}
+} */
 
 
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker
-    .register('/fm-sw.js')
-    .then((registration) => {
-      console.log('Service worker enregistré :', registration);
-    })
-    .catch((err) => {
-      console.error('Erreur en enregistrant le service worker :', err);
-    });
+if (!isStackBlitz && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker
+      .register('/firebase-messaging-sw.js')
+      .then((registration) => {
+        console.log('Service worker enregistré :', registration);
+      })
+      .catch((err) => {
+        console.error('Erreur en enregistrant le service worker :', err);
+      });
+  });
 }
 
 createRoot(document.getElementById('root')!).render(
