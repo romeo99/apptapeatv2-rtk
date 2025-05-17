@@ -1,17 +1,43 @@
 import { AlertCircle, CheckCircle, ChevronLeft, MapPin, Navigation, Phone } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { useOrderContext } from '../../context/OrderContext';
+import { Order } from '../../types/firebase';
 
 export default function DriverDelivery() {
   const { orderId } = useParams();
   const navigate = useNavigate();
-  const { orders, updateOrderStatus } = useOrderContext();
+  const { updateOrderStatus, fetchDeliveryOrders } = useOrderContext();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [order, setOrder] = useState<Order>();
 
-  const order = orders.find(o => o.id === orderId);
+  //const order = orders.find(o => o.id === orderId);
+
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        const orders = await fetchDeliveryOrders();
+        setOrder(orders.find(o => o.id === orderId));
+      } catch (err) {
+        console.error('Error fetching orders:', err);
+        setError('Erreur lors de la récupération des commandes');
+      }
+    };
+
+    fetchOrders();
+
+    const handleOrdersUpdated = () => {
+      fetchOrders();
+    };
+
+    window.addEventListener('ordersUpdated', handleOrdersUpdated);
+
+    return () => {
+      window.removeEventListener('ordersUpdated', handleOrdersUpdated);
+    };
+  }, [fetchDeliveryOrders]);
 
   if (!order) {
     return (
@@ -38,6 +64,8 @@ export default function DriverDelivery() {
     }
   };
 
+  console.log(order);
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="bg-white shadow">
@@ -50,9 +78,9 @@ export default function DriverDelivery() {
               <ChevronLeft className="h-6 w-6" />
             </button>
             <div>
-              <h1 className="text-xl font-semibold">Livraison #{order.id}</h1>
+              <h1 className="text-xl font-semibold">Livraison #{order.orderNumber}</h1>
               <p className="text-sm text-gray-500">
-                {order.deliveryInfo?.firstName} {order.deliveryInfo?.lastName}
+                {order.delivery?.name} - {order.delivery?.phone}
               </p>
             </div>
           </div>
@@ -63,7 +91,7 @@ export default function DriverDelivery() {
         {/* Carte statique de l'adresse */}
         <div className="mb-6 rounded-lg overflow-hidden">
           <img
-            src={`https://maps.googleapis.com/maps/api/staticmap?center=${encodeURIComponent(order.deliveryAddress)}&zoom=15&size=600x300&key=AIzaSyBi3DoK4uEJmMfyjnSCLoQ_hxIv-h-Cbf4&markers=${encodeURIComponent(order.deliveryAddress)}`}
+            src={`https://maps.googleapis.com/maps/api/staticmap?center=${encodeURIComponent(order.delivery?.deliveryAddress!)}&zoom=15&size=600x300&key=AIzaSyBi3DoK4uEJmMfyjnSCLoQ_hxIv-h-Cbf4&markers=${encodeURIComponent(order.delivery?.deliveryAddress!)}`}
             alt="Carte de livraison"
             className="w-full h-[300px] object-cover"
           />
@@ -74,23 +102,23 @@ export default function DriverDelivery() {
             <div className="flex items-start gap-3">
               <MapPin className="h-5 w-5 text-gray-400 mt-0.5" />
               <div>
-                <div className="font-medium">{order.deliveryAddress}</div>
-                {order.deliveryInfo?.additionalInfo && (
+                <div className="font-medium">{order.delivery?.address}</div>
+                {order.delivery?.additionalInfo && (
                   <div className="text-sm text-gray-500">
-                    {order.deliveryInfo.additionalInfo}
+                    {order.delivery.additionalInfo}
                   </div>
                 )}
               </div>
             </div>
 
-            {order.deliveryInfo?.phone && (
+            {order.delivery?.phone && (
               <div className="flex items-center gap-3">
                 <Phone className="h-5 w-5 text-gray-400" />
                 <a
-                  href={`tel:${order.deliveryInfo.phone}`}
+                  href={`tel:${order.delivery.phone}`}
                   className="text-emerald-500"
                 >
-                  {order.deliveryInfo.phone}
+                  {order.delivery.phone}
                 </a>
               </div>
             )}
@@ -108,6 +136,12 @@ export default function DriverDelivery() {
             ))}
             <div className="pt-2 border-t mt-2">
               <div className="flex justify-between font-medium">
+                <span>Frais de livraison</span>
+                <span>{order.total.toFixed(2)} €</span>
+              </div>
+            </div>
+            <div className="pt-2 border-t mt-2">
+              <div className="flex justify-between font-medium">
                 <span>Total</span>
                 <span>{order.total.toFixed(2)} €</span>
               </div>
@@ -123,7 +157,7 @@ export default function DriverDelivery() {
 
         <div className="space-y-3">
           <a
-            href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(order.deliveryAddress)}`}
+            href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(order.delivery?.deliveryAddress!)}`}
             target="_blank"
             rel="noopener noreferrer"
             className="w-full bg-emerald-500 text-white py-3 rounded-lg flex items-center justify-center gap-2"

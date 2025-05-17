@@ -1,4 +1,4 @@
-import { collection, doc, getDoc, onSnapshot, orderBy, query, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, onSnapshot, orderBy, query, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { createContext, useContext, useEffect, useState } from 'react';
 import { db } from '../config/firebase';
 import { sendOrderNotification } from '../services/notificationService';
@@ -12,7 +12,9 @@ interface OrderContextType {
   loading: boolean;
   error: string | null;
   getDeliveryOrders: () => Order[];
-  updateOrderStatus: (orderId: string, status: string) => Promise<void>;
+  fetchDeliveryOrders: () => Promise<Order[]>;
+  updateOrderStatus: (orderId: string, status: string, restaurantId?: string) => Promise<void>;
+  updateDeliveryOrderStatus: (orderId: string, status: string) => Promise<void>;
   createOrder: (
     restaurantId: string,
     orderData: {
@@ -49,12 +51,12 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
   const { restaurant } = useRestaurantContext();
   const [lastUpdatedOrder, setLastUpdatedOrder] = useState<{ id: string; status: string } | null>(null);
 
-  const updateOrderStatus = async (orderId: string, status: string) => {
+  const updateOrderStatus = async (orderId: string, status: string, restaurantId?: string) => {
     try {
       if (!restaurant?.id) throw new Error('Restaurant ID is required');
       if (!orderId) throw new Error('Order ID is required');
 
-      const orderRef = doc(db, 'restaurants', restaurant.id, 'orders', orderId);
+      const orderRef = doc(db, 'restaurants', restaurantId ?? restaurant.id, 'orders', orderId);
       const orderDoc = await getDoc(orderRef);
 
       if (!orderDoc.exists()) {
@@ -94,6 +96,52 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
       throw new Error('Failed to update order status');
     }
   };
+
+  const updateDeliveryOrderStatus = async (orderId: string, status: string) => {
+    try {
+      if (!orderId) throw new Error('Order ID is required');
+
+      const orderRef = doc(db, 'available_orders', orderId);
+      const orderDoc = await getDoc(orderRef);
+
+      if (!orderDoc.exists()) {
+        throw new Error('Order not found');
+      }
+
+      const orderData = orderDoc.data();
+      const updates: any = {
+        status,
+        updatedAt: serverTimestamp(),
+        lastStatusUpdate: new Date().toISOString(),
+        statusUpdatedAt: serverTimestamp(),
+        visibleInDashboard: true // Ensure order is visible in dashboard when status changes
+      };
+
+      // If order is cash payment and status changes to preparing, mark as paid
+      if (orderData.paymentMethod === 'cash' &&
+        orderData.paymentStatus === 'pending' &&
+        status === 'preparing') {
+        updates.paymentStatus = 'paid';
+        updates.paymentConfirmedAt = serverTimestamp();
+        updates.paymentConfirmedAt = serverTimestamp();
+      }
+      await updateDoc(orderRef, updates);
+
+      // Log pour le débogage
+      console.log(`Order ${orderId} status updated to ${status} with payment status ${updates.paymentStatus || orderData.paymentStatus}`);
+
+      // Envoyer une notification au client si l'ordre a un userId
+      /* const order = orders.find(o => o.id === orderId);
+      if (order?.userId) {
+        await sendOrderNotification(order.userId, orderId, status);
+      } */
+      return;
+    } catch (err) {
+      console.error('Error updating order status:', err);
+      throw new Error('Failed to update order status');
+    }
+  };
+
   useEffect(() => {
     if (!restaurant?.id) return;
 
@@ -153,14 +201,71 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
       ['pending', 'confirmed'].includes(order.status)
     );
   };
+
+  const fetchDeliveryOrders = async () => {
+    if (!user?.uid) {
+      setError('Utilisateur non connecté');
+      return [];
+    }
+
+    try {
+      // Récupération des informations du livreur
+      const driverRef = doc(db, 'users', user.uid);
+      const driverDoc = await getDoc(driverRef);
+
+      if (!driverDoc.exists()) {
+        setError('Informations du livreur introuvables');
+        return [];
+      }
+
+      const driverRestaurant = driverDoc.data()?.restaurantId;
+
+      // On récupère toutes les commandes (optimisation possible avec des index Firestore si le volume est important)
+      const q = query(
+        collection(db, 'available_orders'),
+        orderBy('createdAt', 'desc')
+      );
+
+      const snapshot = await getDocs(q);
+
+      const ordersData = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          createdAt: data.createdAt?.toDate() || new Date(),
+          updatedAt: data.updatedAt?.toDate() || new Date()
+        };
+      }) as Order[];
+
+      // Filtrage selon la logique complexe
+      const filteredOrders = ordersData.filter(order => {
+        if (order.restricted === true) {
+          return order.restaurantId === driverRestaurant;
+        } else {
+          return !driverRestaurant;
+        }
+      });
+
+      return filteredOrders;
+
+    } catch (error) {
+      console.error('Error fetching delivery orders:', error);
+      setError('Erreur lors du chargement des commandes');
+      return [];
+    }
+  };
+
   return (
     <OrderContext.Provider value={{
       orders,
       loading,
       error,
       getDeliveryOrders,
+      fetchDeliveryOrders,
       createOrder,
-      updateOrderStatus
+      updateOrderStatus,
+      updateDeliveryOrderStatus
     }}>
       {children}
     </OrderContext.Provider>

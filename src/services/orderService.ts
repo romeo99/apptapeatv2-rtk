@@ -3,6 +3,7 @@ import {
   collection,
   doc,
   getDoc,
+  getDocs,
   runTransaction,
   serverTimestamp,
   setDoc,
@@ -72,12 +73,14 @@ export const createOrder = async (restaurantId: string, orderData: {
     name: string;
     address: string;
     phone: string;
+    lat: string;
+    lng: string;
+    deliveryAdress: string;
+    additionalInfo: string;
   };
 }) => {
 
   try {
-
-    console.log(orderData);
 
     // Validate restaurant ID
     if (!restaurantId?.trim()) {
@@ -175,9 +178,11 @@ export const createOrder = async (restaurantId: string, orderData: {
       }),
       ...(orderData.delivery && {
         delivery: {
-          name: String(orderData.delivery.name).trim(),
+          name: orderData.customerName,
           address: String(orderData.delivery.address).trim(),
-          phone: String(orderData.delivery.phone).trim()
+          phone: String(orderData.delivery.phone).trim(),
+          deliveryAdress: `${orderData.delivery.lat},${orderData.delivery.lng}`,
+          additionalInfo: orderData.message,
         }
       }),
       message: orderData.message,
@@ -200,6 +205,26 @@ export const createOrder = async (restaurantId: string, orderData: {
         updatedAt: serverTimestamp()
       });
       return orderId;
+    }
+
+    //If order is delivery, save delivery data
+    if (orderData.type === 'delivery') {
+      // Check if the restaurant has its own drivers
+      const driversRef = collection(db, 'restaurants', restaurantId, 'drivers');
+      const driversSnapshot = await getDocs(driversRef);
+
+      const hasDrivers = !driversSnapshot.empty;
+
+      // Save order to available_orders collection with appropriate restriction
+      const availableOrdersRef = collection(db, 'available_orders');
+      await setDoc(doc(availableOrdersRef, orderId), {
+        ...orderToCreate,
+        id: orderId,
+        restaurantId,
+        restricted: hasDrivers,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
     }
 
     // Update restaurant stats in a transaction to avoid race conditions
@@ -348,6 +373,10 @@ export const createFoodCourtOrder = async (foodCourtId: string, orderData: {
     name: string;
     address: string;
     phone: string;
+    lat: string;
+    lng: string;
+    deliveryAdress: string;
+    additionalInfo: string;
   };
 }) => {
   try {

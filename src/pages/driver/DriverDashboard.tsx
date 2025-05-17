@@ -7,18 +7,19 @@ import type { Order } from '../../types/firebase';
 
 export default function DriverDashboard() {
   const navigate = useNavigate();
-  const { getDeliveryOrders, updateOrderStatus } = useOrderContext();
+  const { updateDeliveryOrderStatus, fetchDeliveryOrders } = useOrderContext();
   const [isOnline, setIsOnline] = useState(true);
   const [availableOrders, setAvailableOrders] = useState<Order[]>([]);
 
-  const updateAvailableOrders = useCallback(() => {
+  const updateAvailableOrders = useCallback(async () => {
     if (isOnline) {
-      const orders = getDeliveryOrders();
+      //const orders = getDeliveryOrders();
+      const orders = await fetchDeliveryOrders();
       setAvailableOrders(orders);
     } else {
       setAvailableOrders([]);
     }
-  }, [isOnline, getDeliveryOrders]);
+  }, [isOnline, fetchDeliveryOrders]);
 
   useEffect(() => {
     updateAvailableOrders();
@@ -36,7 +37,7 @@ export default function DriverDashboard() {
 
   const handleAcceptDelivery = async (order: Order) => {
     try {
-      await updateOrderStatus(order.id, 'delivering', 'driver-1');
+      await updateDeliveryOrderStatus(order.id, 'delivering');
       navigate(`/driver/delivery/${order.id}`);
     } catch (err) {
       console.error('Error accepting delivery:', err);
@@ -88,7 +89,7 @@ export default function DriverDashboard() {
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div>
-                      <h3 className="font-medium">Commande #{order.id.slice(-5)}</h3>
+                      <h3 className="font-medium">Commande #{order.orderNumber}</h3>
                       <div className="flex items-center gap-1 text-sm text-emerald-500 mt-1">
                         <Clock className="h-4 w-4" />
                         <span>Préparation en cours</span>

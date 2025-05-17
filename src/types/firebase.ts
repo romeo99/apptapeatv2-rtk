@@ -66,6 +66,7 @@ export interface Order {
   driverId?: string | null;
   delivery?: {
     address: string;
+    deliveryAddress: string;
     additionalInfo?: string;
     phone?: string;
     name?: string;
@@ -111,6 +112,7 @@ export interface Promotion {
   hidden?: boolean;
   image?: string;
   icon?: string;
+  type?: string;
   order: number;
 }
 
@@ -157,6 +159,8 @@ export interface Restaurant {
   createdAt: Date;
   updatedAt: Date;
   totalRevenue?: number;
+  driverFee?: number;
+  deliveryFee?: number;
   orderCount?: number;
   paymentMethods: string[];
   serviceOptions: string[];

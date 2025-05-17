@@ -19,7 +19,7 @@ const stripePromise = loadStripe(`${import.meta.env.VITE_STRIPE_PUBLISH_KEY}`);
 
 export default function Checkout() {
   const navigate = useNavigate();
-  const { items, applicationFee, serviceFees, subtotal, total, clearCart, scheduledTime, isFoodCourtOrder, foodCourtId, setScheduledTime, anonymousUser, } = useCart();
+  const { items, applicationFee, serviceFees, subtotal, deliveryFees, total, clearCart, scheduledTime, isFoodCourtOrder, foodCourtId, setScheduledTime, anonymousUser, } = useCart();
   const { themeColor, restaurant } = useRestaurantContext();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -34,7 +34,6 @@ export default function Checkout() {
   const today = new Date().toISOString().split('T')[0];
 
   const { user } = useAuth();
-  const [nbLaunch, setNbLaunch] = useState(0);
 
   // Check if Apple Pay is available
   const [isApplePayAvailable, setIsApplePayAvailable] = useState(false);
@@ -42,6 +41,13 @@ export default function Checkout() {
 
   const query = new URLSearchParams(window.location.search);
   const sessionId = query.get('session_id');
+
+  const clearStorage = () => {
+    localStorage.removeItem('foodCourtId');
+    localStorage.removeItem('deliveryInfo');
+    localStorage.removeItem('anoUser');
+    localStorage.removeItem('orderType');
+  }
 
   useEffect(() => {
     // Check if Apple Pay is available
@@ -232,10 +238,6 @@ export default function Checkout() {
         userFistname: 'test',
       });
 
-      /* clearCart();
-      localStorage.removeItem('foodCourtId');
-      localStorage.removeItem('deliveryInfo'); */
-
       // Rediriger vers Stripe Checkout
       const { sessionId } = data as { sessionId: string };
       const result = await stripe.redirectToCheckout({ sessionId });
@@ -335,7 +337,7 @@ export default function Checkout() {
       // Si tout est bon, effacer les erreurs
       setError(null);
     }
-    
+
     try {
       const orderData = await prepareOrderData(selectedMethod);
 
@@ -361,9 +363,7 @@ export default function Checkout() {
 
       if (selectedMethod === 'cash' && !isRegisterMode) {
         clearCart();
-        localStorage.removeItem('foodCourtId');
-        localStorage.removeItem('deliveryInfo');
-        localStorage.removeItem('anoUser');
+        clearStorage();
         if (isFoodCourtOrder && foodCourtId) {
           navigate(`/order-confirmation${isRegisterMode ? '?mode=register' : ''}`, {
             state: { foodCourtId },
@@ -378,9 +378,7 @@ export default function Checkout() {
         setLoading(false);
       } else if (isRegisterMode) {
         clearCart();
-        localStorage.removeItem('foodCourtId');
-        localStorage.removeItem('deliveryInfo');
-        localStorage.removeItem('anoUser');
+        clearStorage();
         navigate(`/restaurant?restaurantId=${restaurantId}&mode=register`, {
           replace: true
         });
@@ -423,9 +421,7 @@ export default function Checkout() {
               });
 
               clearCart();
-              localStorage.removeItem('foodCourtId');
-              localStorage.removeItem('deliveryInfo');
-              localStorage.removeItem('anoUser');
+              clearStorage();
               if (isFoodCourtOrder && foodCourtId) {
                 navigate(`/order-confirmation${isRegisterMode ? '?mode=register' : ''}`, {
                   state: { foodCourtId },
@@ -652,6 +648,7 @@ export default function Checkout() {
             restaurants={restaurantItems}
             items={items}
             serviceFees={serviceFees}
+            deliveryFees={deliveryFees}
             subtotal={subtotal}
             total={total}
             themeColor={themeColor}

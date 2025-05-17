@@ -7,14 +7,16 @@ interface OrderSummaryProps extends React.HTMLAttributes<HTMLDivElement> {
   restaurants?: Record<string, { items: CartItem[]; amount: number }>;
   items: OrderItem[];
   serviceFees: number;
+  deliveryFees: number;
   subtotal: number;
   total: number;
   themeColor?: string;
   setMessage?: (message: string) => void;
 }
 
-export default function OrderSummary({ restaurants, items, serviceFees, subtotal, total, themeColor, setMessage, ...props }: OrderSummaryProps) {
+export default function OrderSummary({ restaurants, items, serviceFees, deliveryFees, subtotal, total, themeColor, setMessage, ...props }: OrderSummaryProps) {
   const [restaurantNames, setRestaurantNames] = useState<Record<string, string>>({});
+  const [orderType, setOrderType] = useState<string>('');
 
   useEffect(() => {
     const loadRestaurantNames = async () => {
@@ -59,6 +61,11 @@ export default function OrderSummary({ restaurants, items, serviceFees, subtotal
     loadRestaurantNames();
   }, [items]);
 
+  useEffect(() => {
+    const orderType = JSON.parse(localStorage.getItem('orderType') || '{"type":"takeaway"}');
+    setOrderType(orderType.type);
+  }, []);
+
   return (
     <div className="bg-white rounded-xl overflow-hidden" {...props}>
       <div className="p-4 border-b">
@@ -72,6 +79,7 @@ export default function OrderSummary({ restaurants, items, serviceFees, subtotal
           onChange={(e) => setMessage(e.target.value)}
           rows={3}
           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+          placeholder="Ex : Pas de sauce, pas de tomate, etc."
         />
       </div>}
       <div className="divide-y">
@@ -272,6 +280,14 @@ export default function OrderSummary({ restaurants, items, serviceFees, subtotal
             <div className="font-medium">Sous-total total</div>
             <div className="font-medium">{subtotal.toFixed(2)}€</div>
           </div>
+          {
+            orderType === 'delivery' && (
+              <div className="flex justify-between mt-2">
+                <div className="text-gray-600">Frais de livraison</div>
+                <div className="text-gray-600">{deliveryFees.toFixed(2)}€</div>
+              </div>
+            )
+          }
           <div className="flex justify-between mt-2">
             <div className="text-gray-600">Frais de service</div>
             <div className="text-gray-600">{serviceFees.toFixed(2)}€</div>
@@ -281,14 +297,6 @@ export default function OrderSummary({ restaurants, items, serviceFees, subtotal
             <div className="font-semibold text-lg">{total.toFixed(2)}€</div>
           </div>
         </div>
-        {/* <div className="p-4 bg-gray-50">
-          <div className="space-y-2">
-            <div className="flex justify-between items-center text-gray-600">
-              <span>Total</span>
-              <span className="font-semibold" style={{ color: themeColor }}>{total.toFixed(2)} €</span>
-            </div>
-          </div>
-        </div> */}
       </div>
     </div>
   );

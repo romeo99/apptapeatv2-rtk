@@ -2,6 +2,7 @@ import { Bike, ChevronLeft, Clock, Instagram, MapPin, Phone, ShoppingBag, Star, 
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useRestaurantContext } from '../context/RestaurantContext';
+import { useUserLocation } from '../hooks/useUserLocation';
 
 export default function RestaurantDetails() {
   const navigate = useNavigate();
@@ -11,6 +12,14 @@ export default function RestaurantDetails() {
   const [error, setError] = useState<string | null>(null);
   const isRegisterMode = new URLSearchParams(window.location.search).get('mode') === 'register';
   const foodCourtId = searchParams.get('foodCourtId');
+  const [deliveryPopup, setShowDeliveryPopup] = useState(false);
+  const [deliveryInfo, setDeliveryInfo] = useState<{}>({
+    adress: '',
+    phone: '',
+    name: ''
+  });
+
+  const { location, locationError } = useUserLocation();
 
   const getTodayHours = () => {
     const days = [
@@ -35,6 +44,14 @@ export default function RestaurantDetails() {
     }
     setLoading(false);
   }, [restaurant]);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setDeliveryInfo((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  }
 
   if (loading) {
     return (
@@ -145,101 +162,85 @@ export default function RestaurantDetails() {
               <button
                 onClick={() => {
                   localStorage.setItem('orderType', JSON.stringify({ type: service }));
-                  if (foodCourtId) {
-                    navigate(`/menu?restaurantId=${restaurant?.id}&foodCourtId=${foodCourtId}${isRegisterMode ? '&mode=register' : ''}`);
-                  } else {
-                    navigate(`/menu?restaurantId=${restaurant?.id}${isRegisterMode ? '&mode=register' : ''}`);
-                  }
+                  if (service === 'delivery') {
+                    setShowDeliveryPopup(true);
+                  } else
+                    if (foodCourtId) {
+                      navigate(`/menu?restaurantId=${restaurant?.id}&foodCourtId=${foodCourtId}${isRegisterMode ? '&mode=register' : ''}`);
+                    } else {
+                      navigate(`/menu?restaurantId=${restaurant?.id}${isRegisterMode ? '&mode=register' : ''}`);
+                    }
                 }}
                 className="bg-white rounded-xl p-8 shadow-sm hover:shadow-md transition-all text-center border-2 hover:border-2"
                 style={{ borderColor: 'transparent', hoverBorderColor: themeColor }}
               >
-                <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" 
-                     style={{ backgroundColor: `${themeColor}20` }}>
-                  {service === 'dine_in' ? <UtensilsCrossed className="h-8 w-8" style={{ color: themeColor }} /> : 
-                   service === 'takeaway' ? <ShoppingBag className="h-8 w-8" style={{ color: themeColor }} /> : 
-                   <Bike className="h-8 w-8" style={{ color: themeColor }} />}
+                <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
+                  style={{ backgroundColor: `${themeColor}20` }}>
+                  {service === 'dine_in' ? <UtensilsCrossed className="h-8 w-8" style={{ color: themeColor }} /> :
+                    service === 'takeaway' ? <ShoppingBag className="h-8 w-8" style={{ color: themeColor }} /> :
+                      <Bike className="h-8 w-8" style={{ color: themeColor }} />}
                 </div>
                 <span className="font-medium" style={{ color: '#333' }}>
                   {service === 'dine_in' ? "Sur place" : service === 'takeaway' ? "À emporter" : "Livraison"}
                 </span>
               </button>
             )) || (
-              <>
-                <button
-                  onClick={() => {
-                    localStorage.setItem('orderType', JSON.stringify({ type: 'dine_in' }));
-                    if (foodCourtId) {
-                      navigate(`/menu?restaurantId=${restaurant?.id}&foodCourtId=${foodCourtId}${isRegisterMode ? '&mode=register' : ''}`);
-                    } else {
-                      navigate(`/menu?restaurantId=${restaurant?.id}${isRegisterMode ? '&mode=register' : ''}`);
-                    }
-                  }}
-                  className="bg-white rounded-xl p-8 border border-gray-100 shadow-sm hover:border-emerald-500 hover:shadow-md transition-all text-center"
-                >
-                  <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" 
-                       style={{ backgroundColor: `${themeColor}20` }}>
-                    <UtensilsCrossed className="h-8 w-8" style={{ color: themeColor }} />
-                  </div>
-                  <span className="font-medium" style={{ color: '#333' }}>
-                    Sur place
-                  </span>
-                </button>
-                <button
-                  onClick={() => {
-                    localStorage.setItem('orderType', JSON.stringify({ type: 'takeaway' }));
-                    if (foodCourtId) {
-                      navigate(`/menu?restaurantId=${restaurant?.id}&foodCourtId=${foodCourtId}${isRegisterMode ? '&mode=register' : ''}`);
-                    } else {
-                      navigate(`/menu?restaurantId=${restaurant?.id}${isRegisterMode ? '&mode=register' : ''}`);
-                    }
-                  }}
-                  className="bg-white rounded-xl p-8 border border-gray-100 shadow-sm hover:border-emerald-500 hover:shadow-md transition-all text-center"
-                >
-                  <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" 
-                       style={{ backgroundColor: `${themeColor}20` }}>
-                    <ShoppingBag className="h-8 w-8" style={{ color: themeColor }} />
-                  </div>
-                  <span className="font-medium" style={{ color: '#333' }}>
-                    À emporter
-                  </span>
-                </button>
-              </>
+              <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <div className="w-12 h-12 border-4 border-emerald-200 border-t-emerald-500 rounded-full animate-spin"></div>
+              </div>
             )}
-          {/* <button
-            onClick={() => {
-              localStorage.setItem('orderType', JSON.stringify({ type: 'dine_in' }));
-              if (foodCourtId) {
-                navigate(`/menu?restaurantId=${restaurant?.id}&foodCourtId=${foodCourtId}`);
-              } else {
-                navigate(`/menu?restaurantId=${restaurant?.id}`);
-              }
-            }}
-            className="bg-white rounded-xl p-8 shadow-sm hover:shadow-md transition-all text-center"
-          >
-            <div className="w-16 h-16 rounded-full bg-emerald-50 flex items-center justify-center mx-auto mb-4">
-              <UtensilsCrossed className="h-8 w-8 text-emerald-500" />
-            </div>
-            <span className="font-medium">Sur place</span>
-          </button>
-          <button
-            onClick={() => {
-              localStorage.setItem('orderType', JSON.stringify({ type: 'takeaway' }));
-              if (foodCourtId) {
-                navigate(`/menu?restaurantId=${restaurant?.id}&foodCourtId=${foodCourtId}`);
-              } else {
-                navigate(`/menu?restaurantId=${restaurant?.id}`);
-              }
-            }}
-            className="bg-white rounded-xl p-8 shadow-sm hover:shadow-md transition-all text-center"
-          >
-            <div className="w-16 h-16 rounded-full bg-emerald-50 flex items-center justify-center mx-auto mb-4">
-              <ShoppingBag className="h-8 w-8 text-emerald-500" />
-            </div>
-            <span className="font-medium">À emporter</span>
-          </button> */}
         </div>
       </div>
+
+      {deliveryPopup && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-11/12 sm:w-96">
+            <h2 className="text-lg font-semibold mb-4">Livraison</h2>
+            <p className="text-gray-600 mb-4">Veuillez renseigner les informations de livraison</p>
+
+            <div className="flex items-center gap-2 mb-4">
+              <MapPin className="h-5 w-5 text-gray-500" />
+              <input
+                type="text"
+                name="address"
+                onChange={handleChange}
+                placeholder="Adresse de livraison"
+                className="border border-gray-300 rounded-lg px-4 py-2 w-full"
+              />
+            </div>
+            <div className="flex items-center gap-2 mb-4">
+              <Phone className="h-5 w-5 text-gray-500" />
+              <input
+                type="text"
+                name="phone"
+                onChange={handleChange}
+                placeholder="Numéro de téléphone"
+                className="border border-gray-300 rounded-lg px-4 py-2 w-full"
+              />
+            </div>
+            <button
+              onClick={async () => {
+                localStorage.setItem('deliveryInfo', JSON.stringify({ ...deliveryInfo, lat: location?.latitude, lng: location?.longitude }));
+                setShowDeliveryPopup(false);
+                if (foodCourtId) {
+                  navigate(`/menu?restaurantId=${restaurant?.id}&foodCourtId=${foodCourtId}${isRegisterMode ? '&mode=register' : ''}`);
+                } else {
+                  navigate(`/menu?restaurantId=${restaurant?.id}${isRegisterMode ? '&mode=register' : ''}`);
+                }
+              }}
+              className="w-full bg-emerald-500 text-white rounded-lg py-2 hover:bg-emerald-600 transition-colors"
+            >
+              Continuer
+            </button>
+            <button
+              onClick={() => setShowDeliveryPopup(false)}
+              className="mt-2 w-full text-gray-500 hover:text-gray-700 transition-colors"
+            >
+              Annuler
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

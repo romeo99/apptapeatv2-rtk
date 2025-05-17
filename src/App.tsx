@@ -74,6 +74,7 @@ import Register from './pages/auth/Register';
 import RegisterDriver from './pages/auth/RegisterDriver';
 import DeliveryTracking from './pages/driver/DeliveryTracking';
 import DriverDashboard from './pages/driver/DriverDashboard';
+import DriverDelivery from './pages/driver/DriverDelivery';
 
 export default function App() {
   const navigate = useNavigate();
@@ -228,7 +229,8 @@ export default function App() {
                       <DriverProtectedRoute>
                         <Routes>
                           <Route path="/" element={<DriverDashboard />} />
-                          <Route path="/delivery/:orderId" element={<DeliveryTracking />} />
+                          <Route path="/delivery/:orderId" element={<DriverDelivery />} />
+                          <Route path="/track/:orderId" element={<DeliveryTracking />} />
                         </Routes>
                       </DriverProtectedRoute>
                     }

@@ -220,12 +220,12 @@ export default function OptionsSettings() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Rémunération livreur (€)
+                  Rémunération livreur (€/Km)
                 </label>
                 <input
                   type="number"
                   min="0"
-                  step="0.01"
+                  step="0.5"
                   value={formData.driverFee}
                   onChange={(e) => setFormData(prev => ({
                     ...prev,

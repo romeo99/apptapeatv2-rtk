@@ -28,6 +28,7 @@ interface RegisterData {
   firstName: string;
   lastName: string;
   phone: string;
+  restaurantId?: string;
 }
 
 interface RegisterRestaurantData {
@@ -239,7 +240,8 @@ export async function registerUser(data: RegisterData, isDriver: boolean = false
       phone: data.phone,
       ...isDriver && {
         role: 'driver',
-        status: 'active'
+        status: 'active',
+        restaurantId: data.restaurantId ?? null,
       },
       displayName: `${data.firstName} ${data.lastName}`,
       createdAt: serverTimestamp(),

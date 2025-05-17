@@ -61,6 +61,7 @@ export function useDrivers() {
         phone: data.phone,
         firstName: '',
         lastName: data.name,
+        restaurantId: restaurant.id,
       }, true);
 
       await setDoc(doc(db, 'restaurants', restaurant.id, 'drivers', driverUser.uid), {

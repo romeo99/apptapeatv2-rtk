@@ -23,7 +23,13 @@ export default function DriverProtectedRoute({ children }: DriverProtectedRouteP
 
             try {
                 const userDoc = await getDoc(doc(db, 'users', user.uid));
-                setIsDriver(userDoc.exists() && userDoc.data().role === 'driver');
+                const userData = userDoc.data();
+                if (!userData) {
+                    setIsDriver(false);
+                    return;
+                }
+
+                setIsDriver(userData.role === 'driver');
             } catch (error) {
                 console.error('Error checking driver role:', error);
             } finally {

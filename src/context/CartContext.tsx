@@ -1,6 +1,8 @@
 import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
+import { useUserLocation } from '../hooks/useUserLocation';
 import { getActivePromotions } from '../services/promotionService';
+import { calculateDistance } from '../services/restaurantService';
 import { getApplicationFee } from '../services/superadminService';
 import { CartItem, MenuOptions } from '../types';
 import type { Promotion } from '../types/firebase';
@@ -17,6 +19,7 @@ interface CartContextType {
   toggleCart: () => void;
   applicationFee: number;
   serviceFees: number;
+  deliveryFees: number;
   subtotal: number;
   total: number;
   isFoodCourtOrder: boolean;
@@ -41,7 +44,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   });
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [scheduledTime, setScheduledTime] = useState<{ date: string; time: string } | null>(null);
-  const location = useLocation();
+  const loc = useLocation();
   const [foodCourtId, setFoodCourtId] = useState<string | null>(null);
   const [activePromotions, setActivePromotions] = useState<Promotion[]>([]);
   const [applicationFee, setApplicationFee] = useState<number>(0);
@@ -91,7 +94,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   // Initialize foodCourtId from URL or localStorage
   useEffect(() => {
     try {
-      const params = new URLSearchParams(location.search);
+      const params = new URLSearchParams(loc.search);
       const urlFoodCourtId = params.get('foodCourtId');
 
       if (urlFoodCourtId) {
@@ -107,7 +110,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem('foodCourtId');
       setFoodCourtId(null);
     }
-  }, [location.search]);
+  }, [loc.search]);
 
   // Check if this is a food court order
   const isFoodCourtOrder = useMemo(() => {
@@ -337,7 +340,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const toggleCart = () => setIsCartOpen((prev) => !prev);
 
-  const fixAnonymousUser = (value: string) => { 
+  const fixAnonymousUser = (value: string) => {
     setAnonymousUser(value)
     localStorage.setItem("anoUser", value)
   };
@@ -363,8 +366,25 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const anonymousUser = anonymouUser;
 
+  let orderType = JSON.parse(localStorage.getItem('orderType') || '{"type":""}');
+  const isDelivery = orderType?.type === 'delivery';
+
+  //Calcul de la distance entre le restaurant et l'utilisateur
+  const { location } = useUserLocation();
+  const restaurantLocation = restaurant?.location;
+
+  const deliveryDistance = calculateDistance(location?.latitude!, location?.longitude!, restaurantLocation?.lat!, restaurantLocation?.lng!) / 1000; //Distance en km
+
+  //Calcul des frais de livraison
+  const deliveryFees = deliveryDistance <= 1 ? restaurant?.driverFee! : restaurant?.driverFee! * deliveryDistance;
+
   const serviceFees = subtotal * applicationFee;
-  const total = subtotal + serviceFees;
+  const total = subtotal + serviceFees + (isDelivery ? deliveryFees : 0);
+
+  console.log(deliveryDistance);
+  console.log(deliveryFees);
+  console.log(isDelivery);
+
 
   return (
     <CartContext.Provider
@@ -379,6 +399,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         toggleCart,
         applicationFee,
         serviceFees,
+        deliveryFees,
         subtotal,
         total,
         isFoodCourtOrder,
