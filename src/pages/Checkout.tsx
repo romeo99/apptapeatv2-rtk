@@ -289,10 +289,6 @@ export default function Checkout() {
   const handlePayment = async () => {
     setLoading(true);
 
-    //Demande de email pour envoie de ticket par mail
-    const functions = getFunctions();
-    const sendEmail = httpsCallable(functions, 'sendOrderConfirmation');
-
     // For Apple Pay and Google Pay, use the card payment flow
     /* if (selectedMethod === 'apple_pay' || selectedMethod === 'google_pay') {
       console.log(`Using card payment flow for ${selectedMethod}`);
@@ -355,12 +351,6 @@ export default function Checkout() {
         throw new Error('Erreur lors de la création de la commande');
       }
 
-      await sendEmail({
-        to: 'melesusuaris@gmail.com',
-        subject: 'Merci pour votre commande',
-        order: orderData,
-      });
-
       if (selectedMethod === 'cash' && !isRegisterMode) {
         clearCart();
         clearStorage();
@@ -395,7 +385,6 @@ export default function Checkout() {
     if (sessionId) {
       setLoading(true);
       const functions = getFunctions();
-      const sendEmail = httpsCallable(functions, 'sendOrderConfirmation');
       const retrieveCheckoutSession = httpsCallable(functions, 'retrieveCheckoutSession');
 
       retrieveCheckoutSession({ sessionId })
@@ -413,12 +402,6 @@ export default function Checkout() {
               if (!orderId) {
                 throw new Error('Erreur lors de la création de la commande');
               }
-
-              await sendEmail({
-                to: 'melesusuaris@gmail.com',
-                subject: 'Merci pour votre commande',
-                order: orderData,
-              });
 
               clearCart();
               clearStorage();
