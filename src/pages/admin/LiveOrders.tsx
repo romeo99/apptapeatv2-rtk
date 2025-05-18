@@ -1,16 +1,14 @@
+import {
+  Bike,
+  Calendar,
+  CheckCircle,
+  Clock,
+  Package,
+  ShoppingBag,
+  UtensilsCrossed
+} from 'lucide-react';
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { useSound } from 'use-sound';
-import { 
-  Calculator, 
-  Clock, 
-  Package, 
-  CheckCircle, 
-  UtensilsCrossed, 
-  ShoppingBag, 
-  Bike, 
-  CreditCard, 
-  Calendar 
-} from 'lucide-react';
 import AdminLayout from '../../components/admin/AdminLayout';
 import OrderSearchKeypad from '../../components/admin/OrderSearchKeypad';
 import Receipt from '../../components/Receipt';
@@ -24,9 +22,9 @@ import { getButtonPosition, saveButtonPosition } from '../../services/uiPreferen
 import { Order } from '../../types/firebase';
 
 // Import the split components
-import OrderTabs from '../../components/admin/orders/OrderTabs';
-import OrderList from '../../components/admin/orders/OrderList';
 import LiveOrdersHeader from '../../components/admin/orders/LiveOrdersHeader';
+import OrderList from '../../components/admin/orders/OrderList';
+import OrderTabs from '../../components/admin/orders/OrderTabs';
 
 const TABS = [
   { id: 'scheduled', name: 'Programmées', icon: Calendar, color: 'bg-blue-100 text-blue-800' },
@@ -73,14 +71,14 @@ export default function LiveOrders() {
   const handleStatusChange = async (orderId: string, newStatus: string, autoComplete: boolean = false) => {
     try {
       await updateOrderStatus(orderId, newStatus);
-      
+
       // If we're marking as ready and autoComplete is true, also mark as completed
       if (newStatus === 'ready' && autoComplete) {
         setTimeout(() => {
           updateOrderStatus(orderId, 'completed');
         }, 500); // Small delay to ensure the first status update completes
       }
-      
+
       // La notification sera envoyée automatiquement via le OrderContext
     } catch (err) {
       console.error('Failed to update order status:', err);
@@ -92,7 +90,7 @@ export default function LiveOrders() {
     const currentOrderIds = orders
       .filter(o => {
         return (
-          (o.status === 'pending') || 
+          (o.status === 'pending') ||
           (o.paymentStatus === 'paid' && o.status !== 'completed' && o.status !== 'cancelled')
         );
       })
@@ -388,25 +386,25 @@ export default function LiveOrders() {
   // Filtrer uniquement les commandes visibles - inclure tous les status sauf 'awaiting_payment'
   const activeOrders = orders.filter(order => {
     // Include all visible statuses
-   if (['scheduled', 'pending', 'preparing', 'ready'].includes(order.status)) {
+    if (['scheduled', 'pending', 'preparing', 'ready'].includes(order.status)) {
       return true;
     }
-    
+
     // Include orders with awaiting_payment status but paid payment status
     if (order.status === 'awaiting_payment' && order.paymentStatus === 'paid') {
       return true;
     }
-    
+
     return false;
   });
 
   // Compter les commandes par statut
   const orderCounts = activeOrders.reduce((acc, order) => {
     // For counting purposes, treat paid awaiting_payment orders as pending
-    const countStatus = (order.status === 'awaiting_payment' && order.paymentStatus === 'paid') 
-      ? 'pending' 
+    const countStatus = (order.status === 'awaiting_payment' && order.paymentStatus === 'paid')
+      ? 'pending'
       : order.status;
-      
+
     acc[countStatus] = (acc[countStatus] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
@@ -414,10 +412,10 @@ export default function LiveOrders() {
   // Filter orders for current tab, treating paid awaiting_payment as pending
   const filteredOrders = activeOrders.filter(order => {
     if (activeTab === 'pending') {
-     return order.status === 'pending' || 
-            (order.status === 'awaiting_payment' && order.paymentStatus === 'paid');
+      return order.status === 'pending' ||
+        (order.status === 'awaiting_payment' && order.paymentStatus === 'paid');
     }
-    
+
     return order.status === activeTab;
   });
 
@@ -470,10 +468,10 @@ export default function LiveOrders() {
 
     if (order) {
       // For paid awaiting_payment orders, show them in the pending tab
-      const effectiveStatus = (order.status === 'awaiting_payment' && order.paymentStatus === 'paid') 
-        ? 'pending' 
+      const effectiveStatus = (order.status === 'awaiting_payment' && order.paymentStatus === 'paid')
+        ? 'pending'
         : order.status;
-        
+
       setActiveTab(effectiveStatus);
       setExpandedOrder(order.id);
 
@@ -516,19 +514,19 @@ export default function LiveOrders() {
 
   return (
     <AdminLayout>
-      <LiveOrdersHeader 
+      <LiveOrdersHeader
         ordersCount={activeOrders.length}
         onShowKeypad={() => setShowKeypad(true)}
       />
 
-      <OrderTabs 
+      <OrderTabs
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         orderCounts={orderCounts}
       />
 
       <div className="p-4 space-y-4 overflow-auto" style={{ height: 'calc(100vh - 200px)' }}>
-        <OrderList 
+        <OrderList
           filteredOrders={filteredOrders}
           activeTab={activeTab}
           expandedOrder={expandedOrder}
@@ -556,7 +554,7 @@ export default function LiveOrders() {
         />
       )}
 
-      
+
 
       {/* Menu client en mode caisse */}
       {isRegisterMode && restaurant?.id && (

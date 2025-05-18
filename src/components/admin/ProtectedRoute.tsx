@@ -62,16 +62,20 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
         } else {
           // Then check if user is staff
           const staffQuery = query(
-            collectionGroup(db, 'staff'),
-            where('uid', '==', user.uid)
+            collectionGroup(db, 'users'),
+            where('uid', '==', user.uid),
+            where('role', '==', 'staff')
           );
           const staffDocs = await getDocs(staffQuery);
 
           if (!staffDocs.empty) {
             setUserRole('staff');
-            const restaurantId = staffDocs.docs[0].ref.parent.parent?.id;
+            const staffData = staffDocs.docs[0].data();
+            const restaurantId = staffData.restaurantId;
+
             if (restaurantId) {
               setRestaurantId(restaurantId);
+              localStorage.setItem('restaurantId', restaurantId);
             }
           } else {
             // User is neither owner nor staff

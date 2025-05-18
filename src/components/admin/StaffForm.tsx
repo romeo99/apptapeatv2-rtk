@@ -13,7 +13,6 @@ export default function StaffForm({ onClose, onSubmit }: StaffFormProps) {
     firstName: '',
     lastName: '',
     email: '',
-    status: 'active' as const
   });
 
   const handleSubmit = async (e: React.FormEvent) => {

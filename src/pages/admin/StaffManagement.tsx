@@ -1,3 +1,4 @@
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { Plus, Search, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import AdminLayout from '../../components/admin/AdminLayout';
@@ -5,7 +6,7 @@ import StaffForm from '../../components/admin/StaffForm';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { useRestaurantContext } from '../../context/RestaurantContext';
 import useOrderNotification from '../../hooks/useOrderNotification';
-import { createStaffMember, deleteStaffMember, getStaffMembers } from '../../services/staffService';
+import { deleteStaffMember, getStaffMembers } from '../../services/staffService';
 
 export default function StaffManagement() {
   const { restaurant } = useRestaurantContext();
@@ -39,10 +40,14 @@ export default function StaffManagement() {
     try {
       if (!restaurant?.id) return;
 
-      const result = await createStaffMember(restaurant.id, data);
+      const functions = getFunctions();
+      const createStaffMember = httpsCallable(functions, 'createStaffMember');
+
+      const result = await createStaffMember({ restaurantId: restaurant.id, ...data });
+      const { email, password } = result.data as { email: string; password: string };
 
       // Show credentials modal or print them
-      alert(`Compte créé avec succès!\n\nEmail: ${result.email}\nMot de passe temporaire: ${result.password}\n\nUn email de réinitialisation a été envoyé.`);
+      alert(`Compte créé avec succès!\n\nEmail: ${email}\nMot de passe temporaire: ${password}\n\nUn email de réinitialisation a été envoyé.`);
 
       await loadStaff();
     } catch (err) {

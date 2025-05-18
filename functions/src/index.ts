@@ -1,8 +1,9 @@
-import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
-import * as nodemailer from 'nodemailer';
+import * as functions from 'firebase-functions';
 import * as fs from 'fs';
+import * as nodemailer from 'nodemailer';
 import * as path from 'path';
+import crypto from 'crypto';
 
 admin.initializeApp();
 
@@ -62,14 +63,14 @@ const getEmailTemplate = (code: string, firstName: string = '') => `
 
 export const sendVerificationCode = functions.https.onCall(async (data, context) => {
   const { email, firstName } = data;
-  
+
   if (!email) {
     throw new functions.https.HttpsError('invalid-argument', 'Email is required');
   }
 
   try {
     const code = Math.floor(100000 + Math.random() * 900000).toString();
-    
+
     await admin.firestore().collection('verificationCodes').doc(email).set({
       code,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -99,11 +100,11 @@ export const handleOrderStatusChange = functions.firestore
       const previousValue = change.before.data();
 
       // Check if status has changed from 'awaiting_payment' to 'pending'
-      if (previousValue.status === 'awaiting_payment' && newValue.status === 'pending' && 
-          newValue.paymentStatus === 'paid' && newValue.stripeSessionId) {
-        
+      if (previousValue.status === 'awaiting_payment' && newValue.status === 'pending' &&
+        newValue.paymentStatus === 'paid' && newValue.stripeSessionId) {
+
         console.log(`Order ${context.params.orderId} payment confirmed, updating status`);
-        
+
         // The payment was confirmed through the Stripe webhook
         // We need to handle any additional logic here
       }
@@ -176,18 +177,15 @@ export const handleOrderStatusChange = functions.firestore
   }
 }); */
 
-// Export Stripe functions
-export * from './stripe';
-
 // Apple Pay domain verification endpoint
 export const applePayDomainAssociation = functions.https.onRequest(async (req, res) => {
   try {
     // Path to the domain association file
     const filePath = path.join(__dirname, '../public/.well-known/apple-developer-merchantid-domain-association');
-    
+
     // Read the file
     const fileContent = fs.readFileSync(filePath, 'utf8');
-    
+
     // Set the content type and send the file
     res.set('Content-Type', 'text/plain');
     res.status(200).send(fileContent);
@@ -197,4 +195,50 @@ export const applePayDomainAssociation = functions.https.onRequest(async (req, r
   }
 });
 
+export const createStaffMember = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('permission-denied', 'Seuls les admins peuvent créer des comptes staff');
+  }
+
+  const { email, firstName, lastName, restaurantId } = data;
+
+  const password = Array.from(crypto.getRandomValues(new Uint8Array(12)), x => 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()'[x % 72]).join('');
+  // Génère un mot de passe temporaire
+
+  const userRecord = await admin.auth().createUser({
+    email,
+    password,
+    displayName: `${firstName} ${lastName}`,
+  });
+
+  const db = admin.firestore();
+
+  const userData = {
+    uid: userRecord.uid,
+    email,
+    firstName,
+    lastName,
+    role: 'staff',
+    restaurantId,
+    status: 'active',
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  };
+
+  await db.doc(`users/${userRecord.uid}`).set(userData);
+  await db.doc(`restaurants/${restaurantId}/staff/${userRecord.uid}`).set(userData);
+
+  await admin.auth().generatePasswordResetLink(email);
+
+  return {
+    id: userRecord.uid,
+    email,
+    password,
+  };
+});
+
+
+// Export Stripe functions
 export * from './mailing';
+export * from './stripe';
+

@@ -381,11 +381,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const serviceFees = subtotal * applicationFee;
   const total = subtotal + serviceFees + (isDelivery ? deliveryFees : 0);
 
-  console.log(deliveryDistance);
-  console.log(deliveryFees);
-  console.log(isDelivery);
-
-
   return (
     <CartContext.Provider
       value={{

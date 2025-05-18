@@ -1,17 +1,16 @@
-import { 
-  collection, 
-  doc, 
-  setDoc,
-  addDoc, 
-  updateDoc, 
+import { createUserWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
+import {
+  collection,
   deleteDoc,
-  serverTimestamp,
+  doc,
   getDoc,
   getDocs,
   query,
+  serverTimestamp,
+  setDoc,
+  updateDoc,
   where
 } from 'firebase/firestore';
-import { createUserWithEmailAndPassword, sendPasswordResetEmail, updateProfile } from 'firebase/auth';
 import { auth, db } from '../config/firebase';
 import { generatePassword } from '../utils/passwordGenerator';
 
@@ -46,6 +45,20 @@ export async function createStaffMember(restaurantId: string, data: Omit<StaffMe
       role: 'staff',
       restaurantId,
       status: 'active',
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+
+    //Enregistrement du membre du personnel dans la collection des restaurants
+    const staffRef = doc(db, 'restaurants', restaurantId, 'staff', user.uid);
+    await setDoc(staffRef, {
+      uid: user.uid,
+      firstName: data.firstName,
+      lastName: data.lastName,
+      email: data.email,
+      role: 'staff',
+      status: 'active',
+      restaurantId,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     });
@@ -91,7 +104,7 @@ export async function getStaffMembers(restaurantId: string) {
     const staffRef = collection(db, 'restaurants', restaurantId, 'staff');
     const q = query(staffRef, where('role', '==', 'staff'));
     const snapshot = await getDocs(q);
-    
+
     return snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data(),
@@ -108,7 +121,7 @@ export async function getStaffMember(restaurantId: string, staffId: string) {
   try {
     const staffRef = doc(db, 'restaurants', restaurantId, 'staff', staffId);
     const docSnap = await getDoc(staffRef);
-    
+
     if (!docSnap.exists()) {
       throw new Error('Staff member not found');
     }

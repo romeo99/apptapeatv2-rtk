@@ -37,7 +37,7 @@ export function RestaurantProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const [themeColor, setThemeColor] = useState('#10B981');
-  const restaurantId = searchParams.get('restaurantId') || user?.uid;
+  const restaurantId = localStorage.getItem('restaurantId') || searchParams.get('restaurantId') || user?.uid;
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [isOpen, setIsOpenState] = useState<boolean>(true);
   const [categories, setCategories] = useState<Category[]>([]);
