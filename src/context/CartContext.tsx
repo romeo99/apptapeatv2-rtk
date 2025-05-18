@@ -373,13 +373,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const { location } = useUserLocation();
   const restaurantLocation = restaurant?.location;
 
-  const deliveryDistance = calculateDistance(location?.latitude!, location?.longitude!, restaurantLocation?.lat!, restaurantLocation?.lng!) / 1000; //Distance en km
+  const deliveryDistance: number = calculateDistance(location?.latitude!, location?.longitude!, restaurantLocation?.lat!, restaurantLocation?.lng!) / 1000; //Distance en km
 
   //Calcul des frais de livraison
-  const deliveryFees = deliveryDistance <= 1 ? restaurant?.driverFee! : restaurant?.driverFee! * deliveryDistance;
+  const deliveryFees:number = deliveryDistance <= 1 ? restaurant?.driverFee! : restaurant?.driverFee! * deliveryDistance;
 
   const serviceFees = subtotal * applicationFee;
   const total = subtotal + serviceFees + (isDelivery ? deliveryFees : 0);
+
+  console.log(deliveryDistance, deliveryFees, serviceFees, total);
 
   return (
     <CartContext.Provider

@@ -57,7 +57,8 @@ export interface Order {
   restaurantId: string;
   table?: string;
   type: 'delivery' | 'takeaway' | 'dine_in';
-  status: 'pending' | 'confirmed' | 'preparing' | 'delivering' | 'delivered' | 'completed' | 'cancelled' | 'ready' | 'scheduled';
+  status: 'pending' | 'confirmed' | 'preparing' | 'completed' | 'cancelled' | 'ready' | 'scheduled';
+  deliveryStatus?: 'pending' | 'delivering' | 'delivered' | 'cancelled';
   items: OrderItem[];
   subtotal: number;
   tax: number;

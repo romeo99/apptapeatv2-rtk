@@ -1,8 +1,7 @@
-import { Clock, LogOut, MapPin, Navigation, Power } from 'lucide-react';
+import { Clock, MapPin, Navigation, Power, User2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useOrderContext } from '../../context/OrderContext';
-import { signOut } from '../../services/authService';
 import type { Order } from '../../types/firebase';
 
 export default function DriverDashboard() {
@@ -67,11 +66,12 @@ export default function DriverDashboard() {
                 <span>{isOnline ? 'En ligne' : 'Hors ligne'}</span>
               </button>
               <button
-                onClick={async () => await signOut({ isDriver: true })}
-                className={`p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors`}
-                title='Déconnexion'
+                //onClick={async () => await signOut({ isDriver: true })}
+                onClick={() => navigate('/driver/profile')}
+                className={`p-2 text-green-600 hover:bg-red-50 fs-2 rounded-lg transition-colors`}
+                title='profil'
               >
-                <LogOut className="h-4 w-4" />
+                <User2 className="h-4 w-4" />
               </button>
             </div>
           </div>
@@ -92,7 +92,14 @@ export default function DriverDashboard() {
                       <h3 className="font-medium">Commande #{order.orderNumber}</h3>
                       <div className="flex items-center gap-1 text-sm text-emerald-500 mt-1">
                         <Clock className="h-4 w-4" />
-                        <span>Préparation en cours</span>
+                        <span>
+                          {
+                            order.status === 'pending' ? 'En attente' :
+                              order.status === 'preparing' ? 'En cours de préparation' :
+                                order.status === 'ready' ? 'Commande prête' : 
+                                  order.status === 'completed' ? 'Finalisée' : ''
+                          }
+                        </span>
                       </div>
                       <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
                         <MapPin className="h-4 w-4" />
@@ -112,8 +119,19 @@ export default function DriverDashboard() {
                       onClick={() => handleAcceptDelivery(order)}
                       className="px-4 py-2 bg-emerald-500 text-white rounded-lg text-sm hover:bg-emerald-600 flex items-center gap-2"
                     >
-                      <Navigation className="h-4 w-4" />
-                      Accepter la livraison
+                      {
+                        order.deliveryStatus === 'delivering' ? (
+                          <>
+                            <Clock className="h-4 w-4 animate-spin" />
+                            <span className="animate-pulse">En cours de livraison</span>
+                          </>
+                        ) : (
+                          <>
+                            <Navigation className="h-4 w-4" />
+                            <span>Accepter la livraison</span>
+                          </>
+                        )
+                      }
                     </button>
                   </div>
                 </div>

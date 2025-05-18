@@ -180,7 +180,9 @@ export default function Checkout() {
         paymentMethod: selectedMethod,
         paymentStatus: selectedMethod === 'cash' ? 'pending' : 'paid',
         scheduledTime,
-        ...(deliveryInfo && { delivery: deliveryInfo })
+        ...(deliveryInfo && { delivery: deliveryInfo }),
+        deliveryFees: parseFloat(deliveryFees.toFixed(2)),
+        deliveryStatus: 'pending'
       };
     } else {
       // Commande d'un seul restaurant
@@ -207,7 +209,9 @@ export default function Checkout() {
         customerName: !user || isRegisterMode ? anonymousUser : user.displayName,
         orderNumber: orderNumber,
         scheduledTime,
-        ...(deliveryInfo && { delivery: deliveryInfo })
+        ...(deliveryInfo && { delivery: deliveryInfo }),
+        deliveryFees: parseFloat(deliveryFees.toFixed(2)),
+        deliveryStatus: 'pending'
       };
     }
     return orderData;

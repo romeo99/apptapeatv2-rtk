@@ -1,4 +1,4 @@
-import { collection, doc, getDoc, getDocs, onSnapshot, orderBy, query, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDoc, getDocs, onSnapshot, orderBy, query, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 import { createContext, useContext, useEffect, useState } from 'react';
 import { db } from '../config/firebase';
 import { sendOrderNotification } from '../services/notificationService';
@@ -69,18 +69,22 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
         updatedAt: serverTimestamp(),
         lastStatusUpdate: new Date().toISOString(),
         statusUpdatedAt: serverTimestamp(),
-        visibleInDashboard: true // Ensure order is visible in dashboard when status changes
       };
 
       // If order is cash payment and status changes to preparing, mark as paid
-      if (orderData.paymentMethod === 'cash' &&
+      /* if (orderData.paymentMethod === 'cash' &&
         orderData.paymentStatus === 'pending' &&
         status === 'preparing') {
         updates.paymentStatus = 'paid';
         updates.paymentConfirmedAt = serverTimestamp();
         updates.paymentConfirmedAt = serverTimestamp();
-      }
+      } */
       await updateDoc(orderRef, updates);
+      if (orderData.type === 'delivery') {
+        //Mise à jour de la commande dans les livraisons disponibles
+        const deliveryOrderRef = doc(db, 'available_orders', orderId);
+        await updateDoc(deliveryOrderRef, updates);
+      }
 
       // Log pour le débogage
       console.log(`Order ${orderId} status updated to ${status} with payment status ${updates.paymentStatus || orderData.paymentStatus}`);
@@ -110,22 +114,33 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
 
       const orderData = orderDoc.data();
       const updates: any = {
-        status,
+        deliveryStatus: status,
+        driverId: user?.uid,
         updatedAt: serverTimestamp(),
         lastStatusUpdate: new Date().toISOString(),
         statusUpdatedAt: serverTimestamp(),
-        visibleInDashboard: true // Ensure order is visible in dashboard when status changes
       };
 
-      // If order is cash payment and status changes to preparing, mark as paid
-      if (orderData.paymentMethod === 'cash' &&
-        orderData.paymentStatus === 'pending' &&
-        status === 'preparing') {
-        updates.paymentStatus = 'paid';
-        updates.paymentConfirmedAt = serverTimestamp();
-        updates.paymentConfirmedAt = serverTimestamp();
-      }
+      //Mise à jour de la commande dans les livraisons disponibles
       await updateDoc(orderRef, updates);
+
+      //Mise à jour de la commande dans les commandes du restaurant
+      const restaurantOrderRef = doc(db, 'restaurants', orderData.restaurantId, 'orders', orderId);
+      await updateDoc(restaurantOrderRef, updates);
+
+      if (status === 'delivered') {
+        //Suppression de la commande dans les livraisons disponibles
+        await deleteDoc(orderRef);
+
+        //Enregistrement de la commande dans l'historique du livreur
+        const driverHistoryRef = doc(db, 'users', user?.uid!, 'delivery', orderId);
+        await setDoc(driverHistoryRef, {
+          ...orderData,
+          status: 'delivered',
+          deliveredAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+      }
 
       // Log pour le débogage
       console.log(`Order ${orderId} status updated to ${status} with payment status ${updates.paymentStatus || orderData.paymentStatus}`);
@@ -238,7 +253,7 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
         };
       }) as Order[];
 
-      // Filtrage selon la logique complexe
+      // En cas de flotte de livreurs, on filtre les commandes en fonction du restaurant du livreur
       const filteredOrders = ordersData.filter(order => {
         if (order.restricted === true) {
           return order.restaurantId === driverRestaurant;
@@ -247,7 +262,13 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
         }
       });
 
-      return filteredOrders;
+      //Les commandes sont filtrées pour afficher celles qui sont en attentes ou en cours de livraison par le livreur courant
+      const filteredStatusOrders = filteredOrders.filter(order =>
+        order.deliveryStatus === 'pending' ||
+        (order.deliveryStatus === 'delivering' && order.driverId === user.uid)
+      );
+
+      return filteredStatusOrders;
 
     } catch (error) {
       console.error('Error fetching delivery orders:', error);

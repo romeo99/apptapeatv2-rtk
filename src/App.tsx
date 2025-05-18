@@ -73,8 +73,12 @@ import LoginDriver from './pages/auth/LoginDriver';
 import Register from './pages/auth/Register';
 import RegisterDriver from './pages/auth/RegisterDriver';
 import DeliveryTracking from './pages/driver/DeliveryTracking';
+import DriverChangePasswordPage from './pages/driver/DriverChangePassword';
 import DriverDashboard from './pages/driver/DriverDashboard';
 import DriverDelivery from './pages/driver/DriverDelivery';
+import DriverNotificationsPage from './pages/driver/DriverNotificationPage';
+import DriverProfile from './pages/driver/DriverProfile';
+import DriverEditProfilePage from './pages/driver/DriverProfileEdit';
 
 export default function App() {
   const navigate = useNavigate();
@@ -231,6 +235,10 @@ export default function App() {
                           <Route path="/" element={<DriverDashboard />} />
                           <Route path="/delivery/:orderId" element={<DriverDelivery />} />
                           <Route path="/track/:orderId" element={<DeliveryTracking />} />
+                          <Route path="/profile" element={<DriverProfile />} />
+                          <Route path="/profile/edit" element={<DriverEditProfilePage />} />
+                          <Route path="/profile/password" element={<DriverChangePasswordPage />} />
+                          <Route path="/profile/notifications" element={<DriverNotificationsPage />} />
                         </Routes>
                       </DriverProtectedRoute>
                     }

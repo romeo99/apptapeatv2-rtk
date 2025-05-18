@@ -8,7 +8,7 @@ import { Order } from '../../types/firebase';
 export default function DriverDelivery() {
   const { orderId } = useParams();
   const navigate = useNavigate();
-  const { updateOrderStatus, fetchDeliveryOrders } = useOrderContext();
+  const { updateDeliveryOrderStatus, fetchDeliveryOrders } = useOrderContext();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [order, setOrder] = useState<Order>();
@@ -54,7 +54,7 @@ export default function DriverDelivery() {
     try {
       setLoading(true);
       setError(null);
-      await updateOrderStatus(order.id, 'delivered');
+      await updateDeliveryOrderStatus(order.id, 'delivered');
       navigate('/driver');
     } catch (err) {
       console.error('Error completing delivery:', err);
@@ -63,8 +63,6 @@ export default function DriverDelivery() {
       setLoading(false);
     }
   };
-
-  console.log(order);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -137,7 +135,7 @@ export default function DriverDelivery() {
             <div className="pt-2 border-t mt-2">
               <div className="flex justify-between font-medium">
                 <span>Frais de livraison</span>
-                <span>{order.total.toFixed(2)} €</span>
+                <span>{order.deliveryFee!.toFixed(2)} €</span>
               </div>
             </div>
             <div className="pt-2 border-t mt-2">

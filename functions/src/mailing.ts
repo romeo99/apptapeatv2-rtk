@@ -25,7 +25,7 @@ export const sendOrderConfirmation = functions.https.onCall(async (data, context
     ? `
     <tr>
       <td style="text-align:left;">Frais de livraison</td>
-      <td style="text-align:right;">${parseFloat(order.deliveryFees || 0).toFixed(2)} €</td>
+      <td style="text-align:right;">${parseFloat(order.deliveryFee || 0).toFixed(2)} €</td>
     </tr>
   `
     : '';

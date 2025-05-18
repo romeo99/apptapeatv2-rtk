@@ -69,6 +69,8 @@ export const createOrder = async (restaurantId: string, orderData: {
   customerName?: string;
   orderNumber?: string;
   scheduledTime?: { date: string; time: string } | null;
+  deliveryFees?: number;
+  deliveryStatus?: 'pending' | 'delivering' | 'delivered' | 'canceled';
   delivery?: {
     name: string;
     address: string;
@@ -185,6 +187,8 @@ export const createOrder = async (restaurantId: string, orderData: {
           additionalInfo: orderData.message,
         }
       }),
+      deliveryFee: orderData.deliveryFees,
+      deliveryStatus: orderData.deliveryStatus,
       message: orderData.message,
       customerName: orderData.customerName,
       createdAt: serverTimestamp(),
