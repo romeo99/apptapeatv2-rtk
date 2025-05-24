@@ -1,9 +1,9 @@
 import { ChevronLeft } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getToken, messaging, onMessage } from '../../config/firebase';
-import { useAuth } from '../../context/AuthContext';
-import { getUserNotificationSettings, updateNotificationSettings } from '../../services/userService';
+import { getToken, messaging, onMessage } from '../../../config/firebase';
+import { useAuth } from '../../../context/AuthContext';
+import { getUserNotificationSettings, updateNotificationSettings } from '../../../services/userService';
 
 export default function DriverNotificationsPage() {
     const navigate = useNavigate();

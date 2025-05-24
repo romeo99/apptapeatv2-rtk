@@ -1,7 +1,7 @@
 import { ChevronLeft, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { updateUserPassword } from '../../services/userService';
+import { updateUserPassword } from '../../../services/userService';
 
 export default function DriverChangePasswordPage() {
     const navigate = useNavigate();

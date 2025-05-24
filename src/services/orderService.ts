@@ -65,6 +65,7 @@ export const createOrder = async (restaurantId: string, orderData: {
   subtotal: number;
   total: number;
   paymentMethod: string;
+  paymentStatus?: 'pending' | 'paid';
   message?: string;
   customerName?: string;
   orderNumber?: string;
@@ -168,8 +169,8 @@ export const createOrder = async (restaurantId: string, orderData: {
       items: cleanedItems,
       type: orderType.type,
       ...(orderType.table && { table: orderType.table }),
-      status: orderData.scheduledTime ? 'scheduled' : 'pending',
-      paymentStatus: 'pending', // Always mark as paid in register mode
+      status: orderData.scheduledTime ? 'scheduled' : orderData.paymentMethod === 'cash' ? 'awaiting_payment' : 'pending',
+      paymentStatus: orderData.paymentStatus,
       paymentMethod: orderData.paymentMethod,
       subtotal: Math.max(0, Number(orderData.subtotal) || 0),
       total: Math.max(0, Number(orderData.total) || 0),
@@ -199,17 +200,6 @@ export const createOrder = async (restaurantId: string, orderData: {
     const ordersRef = collection(db, 'restaurants', restaurantDoc.id, 'orders');
     const orderRef = await addDoc(ordersRef, orderToCreate);
     const orderId = orderRef.id;
-
-    // If in register mode, don't save to user's orders
-    const isRegisterMode = new URLSearchParams(window.location.search).get('mode') === 'register';
-    if (isRegisterMode) {
-      // Mark order as paid immediately in register mode
-      await updateDoc(orderRef, {
-        paymentStatus: 'paid',
-        updatedAt: serverTimestamp()
-      });
-      return orderId;
-    }
 
     //If order is delivery, save delivery data
     if (orderData.type === 'delivery') {
@@ -371,6 +361,7 @@ export const createFoodCourtOrder = async (foodCourtId: string, orderData: {
   subtotal: number;
   total: number;
   paymentMethod: string;
+  paymentStatus?: 'pending' | 'paid';
   customerName?: string;
   scheduledTime?: { date: string; time: string } | null;
   delivery?: {
@@ -490,6 +481,7 @@ export const createFoodCourtOrder = async (foodCourtId: string, orderData: {
         subtotal: orderData.subtotal,
         total: orderData.total,
         paymentMethod: orderData.paymentMethod,
+        paymentStatus: orderData.paymentStatus,
         scheduledTime: orderData.scheduledTime,
         delivery: orderData.delivery,
         customerName: orderData.customerName,

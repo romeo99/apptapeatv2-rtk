@@ -422,7 +422,7 @@ export default function LiveOrders() {
   const handlePayAndPrepare = async (orderId: string) => {
     try {
       // Use the updateOrderStatus function from context
-      await updateOrderStatus(orderId, 'preparing');
+      await updateOrderStatus(orderId, 'payandprepare');
     } catch (err) {
       console.error('Error updating order:', err);
       alert('Une erreur est survenue lors de la mise à jour de la commande');
@@ -553,8 +553,6 @@ export default function LiveOrders() {
           onSearch={handleOrderSearch}
         />
       )}
-
-
 
       {/* Menu client en mode caisse */}
       {isRegisterMode && restaurant?.id && (

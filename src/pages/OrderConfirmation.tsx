@@ -2,28 +2,25 @@ import { collection, doc, getDocs, onSnapshot, query, serverTimestamp, updateDoc
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { ChevronLeft, Receipt } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { db } from '../config/firebase';
-import { useOrderContext } from '../context/OrderContext';
+import { useAuth } from '../context/AuthContext';
 import { useRestaurantContext } from '../context/RestaurantContext';
 import { Order } from '../types/firebase';
 
 export default function OrderConfirmation() {
+  const { user } = useAuth()
   const navigate = useNavigate();
   const location = useLocation();
-  const { orders } = useOrderContext();
   const { themeColor } = useRestaurantContext();
-  const [searchParams] = useSearchParams();
-  const isRegisterMode = searchParams.get('mode') === 'register';
-  const foodCourtId = location.state?.foodCourtId;
   const [orderDetails, setOrderDetails] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const orderId = location.state?.orderId;
   const [sessionId, setSessionId] = useState<string | null>(null);
 
   const [showModal, setShowModal] = useState(false);
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(user?.email || '');
   const [sending, setSending] = useState(false);
 
   // Set up listener for the order if we have an orderId
@@ -284,9 +281,13 @@ export default function OrderConfirmation() {
                     <span className="text-gray-600">Sous-total total</span>
                     <span className="font-semibold">{orderDetails.subtotal?.toFixed(2)}€</span>
                   </div>
+                  {orderDetails.type === 'delivery' && <div className="flex justify-between mb-2">
+                    <span className="text-gray-600">Frais de livraison</span>
+                    <span className="font-semibold">{orderDetails.deliveryFee!.toFixed(2)}€</span>
+                  </div>}
                   <div className="flex justify-between mb-2">
                     <span className="text-gray-600">Frais de service</span>
-                    <span className="font-semibold">{((orderDetails.total || 0) - (orderDetails.subtotal || 0)).toFixed(2)}€</span>
+                    <span className="font-semibold">{((orderDetails.total || 0) - ((orderDetails.subtotal || 0) + (orderDetails.deliveryFee || 0))).toFixed(2)}€</span>
                   </div>
                   <div className="flex justify-between pt-2 border-t mt-2">
                     <span className="text-xl font-bold">Total</span>

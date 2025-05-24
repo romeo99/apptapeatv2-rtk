@@ -13,6 +13,7 @@ interface OrderContextType {
   error: string | null;
   getDeliveryOrders: () => Order[];
   fetchDeliveryOrders: () => Promise<Order[]>;
+  fetchDeliveryHistory: (driverId: string) => Promise<Order[]>;
   updateOrderStatus: (orderId: string, status: string, restaurantId?: string) => Promise<void>;
   updateDeliveryOrderStatus: (orderId: string, status: string) => Promise<void>;
   createOrder: (
@@ -65,29 +66,20 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
 
       const orderData = orderDoc.data();
       const updates: any = {
-        status,
+        status: status === 'payandprepare' ? 'preparing' : status,
+        paymentStatus: status === 'payandprepare'  ? 'paid' : orderData.paymentStatus,
         updatedAt: serverTimestamp(),
         lastStatusUpdate: new Date().toISOString(),
         statusUpdatedAt: serverTimestamp(),
       };
 
-      // If order is cash payment and status changes to preparing, mark as paid
-      /* if (orderData.paymentMethod === 'cash' &&
-        orderData.paymentStatus === 'pending' &&
-        status === 'preparing') {
-        updates.paymentStatus = 'paid';
-        updates.paymentConfirmedAt = serverTimestamp();
-        updates.paymentConfirmedAt = serverTimestamp();
-      } */
       await updateDoc(orderRef, updates);
+
       if (orderData.type === 'delivery') {
         //Mise à jour de la commande dans les livraisons disponibles
         const deliveryOrderRef = doc(db, 'available_orders', orderId);
         await updateDoc(deliveryOrderRef, updates);
       }
-
-      // Log pour le débogage
-      console.log(`Order ${orderId} status updated to ${status} with payment status ${updates.paymentStatus || orderData.paymentStatus}`);
 
       // Envoyer une notification au client si l'ordre a un userId
       const order = orders.find(o => o.id === orderId);
@@ -264,11 +256,35 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
 
       //Les commandes sont filtrées pour afficher celles qui sont en attentes ou en cours de livraison par le livreur courant
       const filteredStatusOrders = filteredOrders.filter(order =>
-        order.deliveryStatus === 'pending' ||
-        (order.deliveryStatus === 'delivering' && order.driverId === user.uid)
+        order.status !== 'pending' && (order.deliveryStatus === 'pending' ||
+          (order.deliveryStatus === 'delivering' && order.driverId === user.uid))
       );
 
       return filteredStatusOrders;
+
+    } catch (error) {
+      console.error('Error fetching delivery orders:', error);
+      setError('Erreur lors du chargement des commandes');
+      return [];
+    }
+  };
+
+  const fetchDeliveryHistory = async (driverId: string) => {
+    try {
+      // Récupération des livraisons du livreur
+      const driverRef = collection(db, 'users', driverId, 'delivery');
+      const driverDoc = await getDocs(driverRef);
+
+      if (driverDoc.empty) {
+        return [];
+      }
+
+      const driverDeliveries = driverDoc.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+
+      return driverDeliveries;
 
     } catch (error) {
       console.error('Error fetching delivery orders:', error);
@@ -284,6 +300,7 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
       error,
       getDeliveryOrders,
       fetchDeliveryOrders,
+      fetchDeliveryHistory,
       createOrder,
       updateOrderStatus,
       updateDeliveryOrderStatus

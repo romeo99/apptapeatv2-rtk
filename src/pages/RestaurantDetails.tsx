@@ -14,9 +14,8 @@ export default function RestaurantDetails() {
   const foodCourtId = searchParams.get('foodCourtId');
   const [deliveryPopup, setShowDeliveryPopup] = useState(false);
   const [deliveryInfo, setDeliveryInfo] = useState<{}>({
-    adress: '',
+    address: '',
     phone: '',
-    name: ''
   });
 
   const { location, locationError } = useUserLocation();

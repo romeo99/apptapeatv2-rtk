@@ -1,8 +1,8 @@
 import { AlertCircle, Camera, ChevronLeft, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
-import { updateUserProfile, uploadUserPhoto } from '../../services/profileService';
+import { useAuth } from '../../../context/AuthContext';
+import { updateUserProfile, uploadUserPhoto } from '../../../services/profileService';
 
 export default function DriverEditProfilePage() {
     const navigate = useNavigate();

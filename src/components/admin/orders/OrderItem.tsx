@@ -41,7 +41,23 @@ export default function OrderItem({
             </div>
             <div>
               <div className="flex items-start gap-2">
-                <span className="text-lg font-semibold">#{order.orderNumber}</span>
+                <span className="text-lg font-semibold">
+                  {order.orderNumber}
+                  {typeof order.deliveryFee !== 'undefined' && (
+                    <>
+                      {' - '}
+                      {order.deliveryStatus === 'pending'
+                        ? "En attente d'un livreur"
+                        : order.deliveryStatus === 'delivering'
+                          ? 'Un livreur est en route'
+                          : order.deliveryStatus === 'cancelled'
+                            ? 'Le livreur a annulé'
+                            : order.deliveryStatus === 'delivered'
+                              ? 'Commande livrée'
+                              : ''}
+                    </>
+                  )}
+                </span>
                 {order.items.some(item => item.remarks) && (
                   <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded-full text-xs font-medium">
                     Remarques client

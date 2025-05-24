@@ -51,7 +51,7 @@ export default function DriverDashboard() {
             <div>
               <h1 className="text-lg font-semibold">Livraisons disponibles</h1>
               <p className="text-sm text-gray-500">
-                {availableOrders.length} commande{availableOrders.length !== 1 ? 's' : ''} en attente
+                {availableOrders.length} commande{availableOrders.length > 1 ? 's' : ''} en attente
               </p>
             </div>
             <div className="flex items-center gap-4">

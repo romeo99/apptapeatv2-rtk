@@ -143,6 +143,16 @@ const Receipt = forwardRef<HTMLDivElement, ReceiptProps>(({ order }, ref) => {
                     <div>Sous-total</div>
                     <div>{order.subtotal.toFixed(2)}€</div>
                 </div>
+                {order.deliveryFee && <div style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    marginBottom: "5px",
+                    fontSize: "17px",
+                    color: "#64748b"
+                }}>
+                    <div>Frais de livraison</div>
+                    <div>{order.deliveryFee!.toFixed(2)}€</div>
+                </div>}
                 <div style={{
                     display: "flex",
                     justifyContent: "space-between",

@@ -4,15 +4,15 @@ import { OrderItem } from '../../../types/firebase';
 interface OrderDetailsProps {
   order: any;
   handlePayAndPrepare: (orderId: string) => Promise<void>;
-  updateOrderStatus: (orderId: string, status: string) => Promise<void>;
+  updateOrderStatus: (orderId: string, status: string, autoComplete?: boolean) => Promise<void>;
   handleCompleteOrder: (orderId: string) => Promise<void>;
 }
 
-export default function OrderDetails({ 
-  order, 
-  handlePayAndPrepare, 
-  updateOrderStatus, 
-  handleCompleteOrder 
+export default function OrderDetails({
+  order,
+  handlePayAndPrepare,
+  updateOrderStatus,
+  handleCompleteOrder
 }: OrderDetailsProps) {
   return (
     <div className="mt-4 border-t pt-4">
@@ -76,24 +76,33 @@ export default function OrderDetails({
 
       {/* Actions */}
       <div className="mt-4 flex gap-2">
+        {order.status === 'awaiting_payment' && (
+          <>
+            <button
+              onClick={() => handlePayAndPrepare(order.id)}
+              className="flex-1 py-2 bg-emerald-500 text-white rounded-lg text-sm font-medium flex items-center justify-center gap-2"
+            >
+              <CreditCard className="h-4 w-4" />
+              Encaisser & Préparer
+            </button>
+            <button
+              onClick={() => updateOrderStatus(order.id, 'cancelled')}
+              className="flex-1 py-2 bg-red-500 text-white rounded-lg text-sm font-medium"
+            >
+              Refuser
+            </button>
+          </>
+        )}
+
         {order.status === 'pending' && (
           <>
-            {order.paymentMethod === 'cash' && order.paymentStatus === 'pending' ? (
-              <button
-                onClick={() => handlePayAndPrepare(order.id)}
-                className="flex-1 py-2 bg-emerald-500 text-white rounded-lg text-sm font-medium flex items-center justify-center gap-2"
-              >
-                <CreditCard className="h-4 w-4" />
-                Encaisser & Préparer
-              </button>
-            ) : (
-              <button
-                onClick={() => updateOrderStatus(order.id, 'preparing')}
-                className="flex-1 py-2 bg-emerald-500 text-white rounded-lg text-sm font-medium"
-              >
-                Commencer la préparation
-              </button>
-            )}
+            <button
+              onClick={() => updateOrderStatus(order.id, 'preparing')}
+              className="flex-1 py-2 bg-emerald-500 text-white rounded-lg text-sm font-medium"
+            >
+              Commencer la préparation
+            </button>
+
             <button
               onClick={() => updateOrderStatus(order.id, 'cancelled')}
               className="flex-1 py-2 bg-red-500 text-white rounded-lg text-sm font-medium"

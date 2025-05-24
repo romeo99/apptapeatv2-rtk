@@ -15,21 +15,30 @@ export default function DriverProtectedRoute({ children }: DriverProtectedRouteP
     const [checkingRole, setCheckingRole] = useState(true);
 
     useEffect(() => {
+        console.log('DriverProtectedRoute: checking role...');
+
         const checkDriverRole = async () => {
             if (!user?.uid) {
+                console.log('DriverProtectedRoute: No user ID found');
+
                 setCheckingRole(false);
                 return;
             }
 
             try {
+                console.log('DriverProtectedRoute: Fetching user document...');
+
                 const userDoc = await getDoc(doc(db, 'users', user.uid));
                 const userData = userDoc.data();
                 if (!userData) {
+                    console.log('DriverProtectedRoute: User document not found');
                     setIsDriver(false);
                     return;
                 }
 
+                console.log('DriverProtectedRoute: User document found:', userData);
                 setIsDriver(userData.role === 'driver');
+                setCheckingRole(false);
             } catch (error) {
                 console.error('Error checking driver role:', error);
             } finally {

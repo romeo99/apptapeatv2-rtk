@@ -51,6 +51,10 @@ export default function DriverDelivery() {
   }
 
   const handleDeliveryComplete = async () => {
+    if (order.status !== 'completed') {
+      setError('La préparation de la commande n\'est pas terminée. Attendez la confirmation du restaurant.');
+      return;
+    }
     try {
       setLoading(true);
       setError(null);

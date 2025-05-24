@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import { ChevronLeft } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ChevronLeft, MapPin, Package, CheckCircle, Navigation2, Clock } from 'lucide-react';
-import { useOrderContext } from '../../context/OrderContext';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import ActiveDelivery from '../../components/driver/ActiveDelivery';
+import { useOrderContext } from '../../context/OrderContext';
 
 const RESTAURANT_ADDRESS = "85 Rue Ferrari, 13005 Marseille";
 

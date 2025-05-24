@@ -1,5 +1,6 @@
-import { Edit2, MapPin, Phone, Plus, Search, Trash2 } from 'lucide-react';
+import { Clock, Edit2, MapPin, Phone, Plus, Search, Trash2 } from 'lucide-react';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../../components/admin/AdminLayout';
 import DriverForm from '../../components/admin/DriverForm';
 import LoadingSpinner from '../../components/LoadingSpinner';
@@ -16,6 +17,7 @@ export default function DriversManagement() {
   const [showForm, setShowForm] = useState(false);
   const [selectedDriver, setSelectedDriver] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const navigate = useNavigate();
 
   const handleDelete = async (driverId: string) => {
     if (!window.confirm('Êtes-vous sûr de vouloir supprimer ce livreur ?')) {
@@ -46,6 +48,10 @@ export default function DriversManagement() {
     driver.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     driver.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const goToDetails = (driverId: string) => {
+    navigate(`/admin/settings/drivers/${driverId}`);
+  };
 
   if (loading) {
     return (
@@ -159,6 +165,12 @@ export default function DriversManagement() {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <button
+                      onClick={() => goToDetails(driver.id)}
+                      className="text-yellow-600 hover:text-red-900 mr-4"
+                    >
+                      <Clock className="h-5 w-5" />
+                    </button>
                     <button
                       onClick={() => {
                         setSelectedDriver(driver);

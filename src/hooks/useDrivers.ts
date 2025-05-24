@@ -16,6 +16,8 @@ export interface Driver {
   zone: string;
   status: 'available' | 'busy' | 'offline';
   restaurantId?: string;
+  stripeAccountId: string;
+  stripeAccountStatus: 'pending' | 'active' | 'inactive';
   createdAt: Date;
   updatedAt: Date;
 }

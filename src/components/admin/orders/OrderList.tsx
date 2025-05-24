@@ -8,7 +8,7 @@ interface OrderListProps {
   expandedOrder: string | null;
   toggleOrderExpansion: (orderId: string) => void;
   handlePayAndPrepare: (orderId: string) => Promise<void>;
-  updateOrderStatus: (orderId: string, status: string) => Promise<void>;
+  updateOrderStatus: (orderId: string, status: string, autoComplete?: boolean) => Promise<void>;
   handleCompleteOrder: (orderId: string) => Promise<void>;
   printOrder: (order: Order) => void;
   newOrders: string[];

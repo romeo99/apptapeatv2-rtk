@@ -32,7 +32,8 @@ export default function OptionsSettings() {
     tableCount: 0,
     deliveryFee: 0,
     driverFee: 0,
-    autoPrint: null as boolean | null
+    autoPrint: null as boolean | null,
+    deliveryFeeType: 'fixed',
   });
 
   useOrderNotification();
@@ -47,7 +48,8 @@ export default function OptionsSettings() {
         tableCount: restaurant.tableCount || 0,
         deliveryFee: restaurant.deliveryFee || 0,
         driverFee: restaurant.driverFee || 0,
-        autoPrint: restaurant.autoPrint ?? true
+        autoPrint: restaurant.autoPrint ?? true,
+        deliveryFeeType: restaurant.deliveryFeeType || 'fixed',
       });
     }
   }, [restaurant]);
@@ -73,6 +75,7 @@ export default function OptionsSettings() {
         deliveryFee: Math.max(0, Number(formData.deliveryFee) || 0),
         driverFee: Math.max(0, Number(formData.driverFee) || 0),
         autoPrint: !!formData.autoPrint,
+        deliveryFeeType: formData.deliveryFeeType,
       };
 
       await updateRestaurant(restaurant.id, cleanData);
@@ -196,7 +199,47 @@ export default function OptionsSettings() {
               <h2 className="text-xl font-semibold text-gray-900">Paramètres de livraison</h2>
               <p className="text-sm text-gray-500 mt-1">Configurez les frais et options de livraison</p>
             </div>
-
+            <div className="p-6 grid grid-cols-1 gap-6 sm:grid-cols-2">
+              <fieldset>
+                <legend className="block text-sm font-medium text-gray-700 mb-2">
+                  Type de frais de livraison
+                </legend>
+                <div className="flex flex-col gap-3">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="deliveryFeeType"
+                      value="fixed"
+                      checked={formData.deliveryFeeType === 'fixed'}
+                      onChange={() =>
+                        setFormData(prev => ({
+                          ...prev,
+                          deliveryFeeType: 'fixed',
+                        }))
+                      }
+                      className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300"
+                    />
+                    <span>Frais de livraison fixe (€)</span>
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="deliveryFeeType"
+                      value="variable"
+                      checked={formData.deliveryFeeType === 'variable'}
+                      onChange={() =>
+                        setFormData(prev => ({
+                          ...prev,
+                          deliveryFeeType: 'variable',
+                        }))
+                      }
+                      className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300"
+                    />
+                    <span>Rémunération livreur (€/Km)</span>
+                  </label>
+                </div>
+              </fieldset>
+            </div>
             <div className="p-6 grid grid-cols-1 gap-6 sm:grid-cols-2">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -205,7 +248,7 @@ export default function OptionsSettings() {
                 <input
                   type="number"
                   min="0"
-                  step="0.01"
+                  step="0.5"
                   value={formData.deliveryFee}
                   onChange={(e) => setFormData(prev => ({
                     ...prev,
@@ -255,7 +298,7 @@ export default function OptionsSettings() {
                 <input
                   type="number"
                   min="0"
-                  step="0.01"
+                  step="0.5"
                   value={formData.minimumOrder}
                   onChange={(e) => setFormData(prev => ({
                     ...prev,
@@ -300,7 +343,7 @@ export default function OptionsSettings() {
                 <input
                   type="checkbox"
                   id="autoPrint"
-                  checked={formData.autoPrint}
+                  checked={formData.autoPrint!}
                   onChange={(e) => setFormData(prev => ({
                     ...prev,
                     autoPrint: e.target.checked

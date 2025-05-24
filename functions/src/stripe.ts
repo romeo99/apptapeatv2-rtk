@@ -21,6 +21,8 @@ interface PaymentSessionRestaurant {
   stripeAccountId: string;
   amount: number;
   items: CartItem[];
+  deliveryFees: number;
+  isDelivery: boolean;
 }
 
 interface PaymentSession {
@@ -34,13 +36,10 @@ interface PaymentSession {
 }
 
 export const createCheckoutSession = functions.https.onCall(async (data, context) => {
-  /* if (!context.auth) {
-    throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
-  } */
 
   const { restaurants, successUrl, cancelUrl, fees, method, userFistname } = data;
-  //const userId = context.auth.uid;
-  const userId = userFistname; // For testing purposes
+
+  const userId = userFistname;
 
   try {
     // Validate all restaurants first
@@ -72,8 +71,7 @@ export const createCheckoutSession = functions.https.onCall(async (data, context
       checkoutSessionId: '',
     };
 
-    // Calculate total amount
-    // const totalAmount = restaurants.reduce((sum: any, restaurant: { amount: any }) => sum + restaurant.amount, 0);
+    const isDelivery = restaurants.some((restaurant: any) => restaurant.isDelivery);
 
     // Create Stripe checkout session
     const session = await stripe.checkout.sessions.create({
@@ -98,11 +96,27 @@ export const createCheckoutSession = functions.https.onCall(async (data, context
                 name: item.name,
                 images: [item.image],
               },
-              unit_amount: Math.round(item.price * 100), // Convert to cents
+              unit_amount: Math.round(item.price * 100),
             },
             quantity: item.quantity,
           })),
         ),
+        // Add delivery fees as a separate line item
+        ...(isDelivery
+          ? [{
+            price_data: {
+              currency: 'eur',
+              product_data: {
+                name: 'Frais de livraison',
+                description: 'Frais de livraison pour la commande',
+              },
+              unit_amount: Math.round(
+                restaurants.reduce((total: number, restaurant: any) => total + restaurant.deliveryFees, 0) * 100
+              ),
+            },
+            quantity: 1,
+          }]
+          : []),
         // Add service fees as a separate line item
         {
           price_data: {
@@ -111,7 +125,7 @@ export const createCheckoutSession = functions.https.onCall(async (data, context
               name: 'Frais de service',
               description: 'Frais de service et de traitement',
             },
-            unit_amount: Math.round(restaurants.reduce((total: number, restaurant: any) => total + restaurant.amount, 0) * fees * 100), // Convert to cents
+            unit_amount: Math.round(restaurants.reduce((total: number, restaurant: any) => total + restaurant.amount, 0) * fees * 100),
           },
           quantity: 1,
         },
@@ -130,9 +144,6 @@ export const createCheckoutSession = functions.https.onCall(async (data, context
 });
 
 export const createStripeConnectAccount = functions.https.onCall(async (data, context) => {
-  /* if (!context.auth) {
-    throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
-  } */
 
   const { restaurantId } = data;
   if (!restaurantId) {
@@ -151,7 +162,7 @@ export const createStripeConnectAccount = functions.https.onCall(async (data, co
     // Create a Stripe Connect account
     const account = await stripe.accounts.create({
       type: 'express',
-      country: 'FR', // Assuming the restaurant is in France
+      country: 'FR',
       email: restaurantData?.email,
       business_type: 'company',
       capabilities: {
@@ -171,6 +182,58 @@ export const createStripeConnectAccount = functions.https.onCall(async (data, co
       account: account.id,
       refresh_url: `${functions.config().app.url}/admin/settings/stripe-connect?refresh=true`,
       return_url: `${functions.config().app.url}/admin/settings/stripe-connect?success=true`,
+      type: 'account_onboarding',
+    });
+
+    return { url: accountLink.url };
+  } catch (error) {
+    console.error('Error creating Stripe Connect account:', error);
+    throw new functions.https.HttpsError('internal', 'Error creating Stripe Connect account');
+  }
+});
+
+export const createDriverStripeConnectAccount = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
+  }
+
+  const { driverId } = data;
+  if (!driverId) {
+    throw new functions.https.HttpsError('invalid-argument', 'Driver ID is required');
+  }
+
+  try {
+    // Get driver data from Firestore
+    const driverDoc = await db.doc(`users/${driverId}`).get();
+    if (!driverDoc.exists) {
+      throw new functions.https.HttpsError('not-found', 'Driver not found');
+    }
+
+    const driverData = driverDoc.data();
+
+    // Create a Stripe Connect account
+    const account = await stripe.accounts.create({
+      type: 'express',
+      country: 'FR',
+      email: driverData?.email,
+      business_type: 'individual',
+      capabilities: {
+        card_payments: { requested: true },
+        transfers: { requested: true },
+      },
+    });
+
+    // Update driver document with Stripe account ID
+    await db.doc(`users/${driverId}`).update({
+      stripeAccountId: account.id,
+      stripeAccountStatus: 'pending',
+    });
+
+    // Create an account link for onboarding
+    const accountLink = await stripe.accountLinks.create({
+      account: account.id,
+      refresh_url: `${functions.config().app.url}/driver/profile/stripe-connect?refresh=true`,
+      return_url: `${functions.config().app.url}/driver/profile/stripe-connect?success=true`,
       type: 'account_onboarding',
     });
 
@@ -228,25 +291,6 @@ export const handleStripeWebhook = functions.https.onRequest(async (req, res) =>
         updatedAt: admin.firestore.Timestamp.now(),
       });
 
-      // Create orders for each restaurant
-      const orderRefs = paymentSession.restaurants.map((restaurant) => {
-        const orderRef = db.collection('orders').doc();
-        const order = {
-          id: orderRef.id,
-          userId: paymentSession.userId,
-          restaurantId: restaurant.restaurantId,
-          items: restaurant.items,
-          amount: restaurant.amount,
-          status: 'pending',
-          paymentSessionId,
-          createdAt: admin.firestore.Timestamp.now(),
-          updatedAt: admin.firestore.Timestamp.now(),
-        };
-        transaction.set(orderRef, order);
-        return orderRef;
-      });
-
-      return orderRefs;
     });
 
     // After transaction succeeds, process Stripe transfers
@@ -271,13 +315,6 @@ export const handleStripeWebhook = functions.https.onRequest(async (req, res) =>
 });
 
 export const retrieveCheckoutSession = functions.https.onCall(async (data, context) => {
-  // Vérifier si l'utilisateur est authentifié
-  /* if (!context.auth) {
-    throw new functions.https.HttpsError(
-      'unauthenticated',
-      'Vous devez être authentifié pour effectuer cette action.'
-    );
-  } */
 
   const { sessionId } = data;
 
@@ -305,4 +342,47 @@ export const retrieveCheckoutSession = functions.https.onCall(async (data, conte
       'Une erreur est survenue lors de la récupération de la session Stripe.'
     );
   }
+});
+
+export const handleDriverPayment = functions.https.onCall(async (data, context) => {
+  const { driverId, sessionId, restaurantId, orderId } = data;
+
+  if (!driverId) {
+    throw new functions.https.HttpsError('invalid-argument', 'Driver ID is required');
+  }
+
+  //Retrieve driver data from Firestore
+  const driverRef = db.doc(`users/${driverId}`);
+  const driverDoc = await driverRef.get();
+  const driverData = driverDoc.data();
+  if (!driverData?.stripeAccountId) {
+    throw new functions.https.HttpsError('failed-precondition', 'Driver is not setup for payments');
+  }
+
+  if (!sessionId) {
+    throw new functions.https.HttpsError('invalid-argument', 'Session ID is required');
+  }
+
+  // Retrieve order data from Firestore
+  const orderRef = db.collection(`restaurants/${restaurantId}/orders`).doc(orderId);
+  const orderDoc = await orderRef.get();
+  const orderData = orderDoc.data();
+
+  //Retrieve payment session data
+  const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+  if (!session) {
+    throw new functions.https.HttpsError('not-found', 'Session not found');
+  }
+  const { paymentSessionId } = session.metadata!;
+
+  if (session.payment_status === 'paid') {
+    await stripe.transfers.create({
+      amount: orderData!.deliveryFees,
+      currency: 'eur',
+      destination: driverData.stripeAccountId,
+      transfer_group: paymentSessionId,
+    });
+  }
+
 });

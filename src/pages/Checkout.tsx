@@ -2,7 +2,7 @@ import { loadStripe } from '@stripe/stripe-js';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { ChevronLeft, CreditCard } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import OrderSummary from '../components/OrderSummary';
 import UpsellModal from '../components/UpsellModal';
@@ -11,7 +11,6 @@ import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { useRestaurantContext } from '../context/RestaurantContext';
 import { createFoodCourtOrder, createOrder, generateOrderNumber } from '../services/orderService';
-import { createCheckoutSession } from '../services/stripeCheckoutService';
 import { Restaurant } from '../types/firebase';
 import { getSuggestionGroups } from '../utils/suggestionEngine';
 
@@ -32,6 +31,7 @@ export default function Checkout() {
   const [restaurantData, setRestaurantData] = useState<Restaurant | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const today = new Date().toISOString().split('T')[0];
+  const hasProcessed = useRef(false);
 
   const { user } = useAuth();
 
@@ -42,11 +42,14 @@ export default function Checkout() {
   const query = new URLSearchParams(window.location.search);
   const sessionId = query.get('session_id');
 
+  let orderType = JSON.parse(localStorage.getItem('orderType') || '{"type":"takeaway"}');
+
   const clearStorage = () => {
     localStorage.removeItem('foodCourtId');
     localStorage.removeItem('deliveryInfo');
     localStorage.removeItem('anoUser');
     localStorage.removeItem('orderType');
+    localStorage.removeItem('orderData');
   }
 
   useEffect(() => {
@@ -106,12 +109,14 @@ export default function Checkout() {
         acc[item.restaurantId] = {
           items: [],
           amount: 0,
+          isDelivery: orderType.type === 'delivery',
+          deliveryFees: deliveryFees
         };
       }
       acc[item.restaurantId].items.push(item);
       acc[item.restaurantId].amount += item.price * item.quantity;
       return acc;
-    }, {} as Record<string, { items: typeof items; amount: number }>);
+    }, {} as Record<string, { items: typeof items; amount: number, isDelivery: boolean, deliveryFees: number }>);
   }, [items]);
 
   const prepareOrderData = async (selectedMethod: string): Promise<any> => {
@@ -178,7 +183,7 @@ export default function Checkout() {
         total: parseFloat(total.toFixed(2)),
         customerName: !user || isRegisterMode ? anonymousUser : user.displayName,
         paymentMethod: selectedMethod,
-        paymentStatus: selectedMethod === 'cash' ? 'pending' : 'paid',
+        paymentStatus: selectedMethod === 'cash' && !isRegisterMode ? 'pending' : 'paid',
         scheduledTime,
         ...(deliveryInfo && { delivery: deliveryInfo }),
         deliveryFees: parseFloat(deliveryFees.toFixed(2)),
@@ -205,6 +210,7 @@ export default function Checkout() {
         subtotal: parseFloat(subtotal.toFixed(2)),
         total: parseFloat(total.toFixed(2)),
         paymentMethod: selectedMethod,
+        paymentStatus: selectedMethod === 'cash' && !isRegisterMode ? 'pending' : 'paid',
         message: message,
         customerName: !user || isRegisterMode ? anonymousUser : user.displayName,
         orderNumber: orderNumber,
@@ -214,6 +220,9 @@ export default function Checkout() {
         deliveryStatus: 'pending'
       };
     }
+
+    //Save the order data in localStorage for later use
+    localStorage.setItem('orderData', JSON.stringify(orderData));
     return orderData;
   };
 
@@ -226,10 +235,12 @@ export default function Checkout() {
       const createCheckoutSession = httpsCallable(functions, 'createCheckoutSession');
 
       // Préparer les données des restaurants pour la session de paiement
-      const restaurants = Object.entries(restaurantItems).map(([restaurantId, { items, amount }]) => ({
+      const restaurants = Object.entries(restaurantItems).map(([restaurantId, { items, amount, isDelivery, deliveryFees }]) => ({
         restaurantId,
         items,
         amount,
+        isDelivery,
+        deliveryFees
       }));
 
       // Créer la session Stripe
@@ -239,7 +250,7 @@ export default function Checkout() {
         successUrl: `${window.location.origin}/checkout?restaurantId=${restaurantId}`,
         cancelUrl: `${window.location.origin}/checkout?restaurantId=${restaurantId}`,
         method: 'card',
-        userFistname: 'test',
+        userFistname: !user || isRegisterMode ? anonymousUser : user.displayName,
       });
 
       // Rediriger vers Stripe Checkout
@@ -261,43 +272,9 @@ export default function Checkout() {
     }
   };
 
-  const processStripePayment = async (orderId: string) => {
-    try {
-      setLoading(true);
-      console.log(`Processing Stripe payment for order ${orderId} in restaurant ${restaurantData?.id} - Starting checkout flow`);
-
-      const checkoutUrl = await createCheckoutSession({
-        restaurantId: restaurantData?.id || '',
-        items,
-        total,
-        orderId,
-        successUrl: `${window.location.origin}/order-confirmation`,
-        cancelUrl: `${window.location.origin}/checkout?order_id=${orderId}`
-      });
-
-      console.log(`Redirecting to Stripe checkout: ${checkoutUrl} - Order should be visible in admin panel`);
-      window.location.href = checkoutUrl;
-
-      // Nettoyer le panier et les données locales
-      clearCart();
-      localStorage.removeItem('foodCourtId');
-      localStorage.removeItem('deliveryInfo');
-    } catch (error) {
-      console.error('Payment error:', error);
-      setError('Une erreur est survenue lors de la création de la session de paiement.');
-      setLoading(false);
-    }
-  };
-
   // Fonction principale de gestion du paiement
   const handlePayment = async () => {
     setLoading(true);
-
-    // For Apple Pay and Google Pay, use the card payment flow
-    /* if (selectedMethod === 'apple_pay' || selectedMethod === 'google_pay') {
-      console.log(`Using card payment flow for ${selectedMethod}`);
-      setSelectedMethod('card');
-    } */
 
     //Controle pour verifier si la valeur de l'heure est bien renseignée et est au minimum 15 minutes après l'heure actuelle
     if (isScheduled) {
@@ -386,57 +363,61 @@ export default function Checkout() {
   };
 
   useEffect(() => {
-    if (sessionId) {
-      setLoading(true);
-      const functions = getFunctions();
-      const retrieveCheckoutSession = httpsCallable(functions, 'retrieveCheckoutSession');
+    if (!hasProcessed.current && sessionId) {
+      hasProcessed.current = true;
+      if (sessionId) {
+        setLoading(true);
+        const functions = getFunctions();
+        const retrieveCheckoutSession = httpsCallable(functions, 'retrieveCheckoutSession');
 
-      retrieveCheckoutSession({ sessionId })
-        .then(async (result: any) => {
-          const session = result.data;
+        retrieveCheckoutSession({ sessionId })
+          .then(async (result: any) => {
+            const session = result.data;
 
-          if (session.payment_status === 'paid') {
-            try {
-              const orderData = await prepareOrderData('card');
-              const anoUser = localStorage.getItem('anoUser')
+            if (session.payment_status === 'paid') {
+              try {
+                //Récupérer les données de la commande
+                const orderData = JSON.parse(localStorage.getItem('orderData') || '{}');
 
-              // Créer la commande dans Firestore
-              let orderId: string | string[] | void = isFoodCourtOrder ? await createFoodCourtOrder(foodCourtId!, orderData) : await createOrder(restaurantId!, { ...orderData, customerName: anoUser });
+                // Créer la commande dans Firestore
+                let orderId: string | string[] | void = isFoodCourtOrder ? await createFoodCourtOrder(foodCourtId!, orderData) : await createOrder(restaurantId!, orderData);
 
-              if (!orderId) {
-                throw new Error('Erreur lors de la création de la commande');
+                if (!orderId) {
+                  throw new Error('Erreur lors de la création de la commande');
+                }
+
+                clearCart();
+                clearStorage();
+                if (isFoodCourtOrder && foodCourtId) {
+                  navigate(`/order-confirmation${isRegisterMode ? '?mode=register' : ''}`, {
+                    state: { foodCourtId },
+                    replace: true
+                  });
+                } else {
+                  navigate(`/order-confirmation${isRegisterMode ? '?mode=register' : ''}`, {
+                    state: { orderId, restaurantId: restaurantId },
+                    replace: true
+                  });
+                }
+                setLoading(false);
+              } catch (error) {
+                console.error('Order error:', error);
+                setError('Une erreur est survenue lors de la commande.');
+                setLoading(false);
               }
-
-              clearCart();
-              clearStorage();
-              if (isFoodCourtOrder && foodCourtId) {
-                navigate(`/order-confirmation${isRegisterMode ? '?mode=register' : ''}`, {
-                  state: { foodCourtId },
-                  replace: true
-                });
-              } else {
-                navigate(`/order-confirmation${isRegisterMode ? '?mode=register' : ''}`, {
-                  state: { orderId, restaurantId: restaurantId },
-                  replace: true
-                });
-              }
-              setLoading(false);
-            } catch (error) {
-              console.error('Order error:', error);
-              setError('Une erreur est survenue lors de la commande.');
+            } else {
+              setError('Le paiement a échoué. Veuillez réessayer.');
               setLoading(false);
             }
-          } else {
-            setError('Le paiement a échoué. Veuillez réessayer.');
-            setLoading(false);
-          }
-        })
-        .catch((error) => {
-          console.error('Error retrieving checkout session:', error);
-        })
-        .finally(() => setLoading(false));
-    } else {
-      setLoading(false);
+          })
+          .catch((error) => {
+            console.error('Error retrieving checkout session:', error);
+          })
+          .finally(() => setLoading(false));
+
+      } else {
+        setLoading(false);
+      }
     }
   }, [sessionId]);
 
@@ -461,7 +442,7 @@ export default function Checkout() {
       <div className="max-w-lg mx-auto px-4 pt-20 flex-1 flex flex-col">
         {error && <div className="mb-6 p-4 bg-red-50 text-red-500 rounded-lg">{error}</div>}
 
-        {!isRegisterMode && <div className="grid grid-cols-2 gap-3 mb-4">
+        {!isRegisterMode && orderType.type !== 'delivery' && <div className="grid grid-cols-2 gap-3 mb-4">
           <button
             onClick={() => setIsScheduled(false)}
             className={`p-3 sm:p-4 rounded-xl flex flex-col items-center gap-1 sm:gap-2 border-2 transition-colors bg-opacity-10
@@ -552,7 +533,7 @@ export default function Checkout() {
           </button>
 
           {/* Cash payment option */}
-          <button
+          {orderType.type !== 'delivery' && <button
             onClick={() => setSelectedMethod('cash')}
             disabled={!allowedMethods.includes('cash')}
             className={`p-3 sm:p-4 rounded-xl flex flex-col items-center gap-1 sm:gap-2 border-2 transition-colors ${selectedMethod === 'cash'
@@ -571,7 +552,7 @@ export default function Checkout() {
             {!allowedMethods.includes('cash') && (
               <span className="text-[10px] sm:text-xs text-gray-500">Non disponible</span>
             )}
-          </button>
+          </button>}
 
           {/* Apple Pay option - only show if available */}
           {isApplePayAvailable && (

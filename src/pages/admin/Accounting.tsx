@@ -465,8 +465,26 @@ export default function Accounting() {
 
           {/* Tableau des transactions */}
           <div className="bg-white rounded-xl shadow-sm overflow-hidden lg:col-span-2">
-            <div className="px-6 py-5 border-b">
+            <div className="px-6 py-5 border-b flex items-center justify-between">
               <h3 className="text-lg font-semibold">Dernières transactions</h3>
+
+              {/* Bouton pour exporter les tickets */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleExport('pdf')}
+                  className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 flex items-center gap-2"
+                >
+                  <Download className="h-4 w-4" />
+                  Ticket X
+                </button>
+                <button
+                  onClick={() => handleExport('pdf')}
+                  className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 flex items-center gap-2"
+                >
+                  <Download className="h-4 w-4" />
+                  Tickets Z
+                </button>
+              </div>
             </div>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">

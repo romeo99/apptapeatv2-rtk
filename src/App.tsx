@@ -58,6 +58,7 @@ import MenuItemForm from './pages/admin/MenuItemForm';
 import MenuManagement from './pages/admin/MenuManagement';
 import OrderHistory from './pages/admin/OrderHistory';
 import BankingSettings from './pages/admin/settings/BankingSettings';
+import DriverAdminHistory from './pages/admin/settings/DriversHistory';
 import Settings from './pages/admin/settings/index';
 import OptionsSettings from './pages/admin/settings/OptionsSettings';
 import ProfileSettings from './pages/admin/settings/ProfileSettings';
@@ -73,18 +74,19 @@ import LoginDriver from './pages/auth/LoginDriver';
 import Register from './pages/auth/Register';
 import RegisterDriver from './pages/auth/RegisterDriver';
 import DeliveryTracking from './pages/driver/DeliveryTracking';
-import DriverChangePasswordPage from './pages/driver/DriverChangePassword';
 import DriverDashboard from './pages/driver/DriverDashboard';
 import DriverDelivery from './pages/driver/DriverDelivery';
-import DriverNotificationsPage from './pages/driver/DriverNotificationPage';
-import DriverProfile from './pages/driver/DriverProfile';
-import DriverEditProfilePage from './pages/driver/DriverProfileEdit';
+import DriverChangePasswordPage from './pages/driver/settings/DriverChangePassword';
+import DriverHistory from './pages/driver/settings/DriverHistory';
+import DriverNotificationsPage from './pages/driver/settings/DriverNotificationPage';
+import DriverProfile from './pages/driver/settings/DriverProfile';
+import DriverEditProfilePage from './pages/driver/settings/DriverProfileEdit';
+import DriverStripeConnect from './pages/driver/settings/DriverStripeConnect';
 
 export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
   const [showSplash, setShowSplash] = useState(true);
-  const [initialized, setInitialized] = useState(false);
 
   // Add class to body for admin pages
   useEffect(() => {
@@ -97,7 +99,8 @@ export default function App() {
     document.body.classList.toggle('driver-page', isDriverPage);
 
     return () => {
-      document.body.classList.remove('admin-page', 'driver-page');
+      document.body.classList.remove('admin-page');
+      document.body.classList.remove('driver-page');
       document.body.classList.remove('superadmin-page');
     };
   }, [location.pathname]);
@@ -217,6 +220,7 @@ export default function App() {
                           <Route path="/settings/stripe" element={<StripeSettings />} />
                           <Route path="/settings/profile" element={<ProfileSettings />} />
                           <Route path="/settings/drivers" element={<DriversManagement />} />
+                          <Route path="/settings/drivers/:id" element={<DriverAdminHistory />} />
                           <Route path="/settings/stripe-connect" element={<StripeConnect />} />
                           <Route path="/support" element={<Support />} />
                         </Routes>
@@ -239,6 +243,8 @@ export default function App() {
                           <Route path="/profile/edit" element={<DriverEditProfilePage />} />
                           <Route path="/profile/password" element={<DriverChangePasswordPage />} />
                           <Route path="/profile/notifications" element={<DriverNotificationsPage />} />
+                          <Route path="/profile/history" element={<DriverHistory />} />
+                          <Route path="/profile/stripe-connect" element={<DriverStripeConnect />} />
                         </Routes>
                       </DriverProtectedRoute>
                     }

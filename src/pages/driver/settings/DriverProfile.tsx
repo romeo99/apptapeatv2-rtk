@@ -1,41 +1,12 @@
-import { collectionGroup, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
-import { Bell, ChevronLeft, Lock, LogOut, User } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import ProfileMenuItem from '../../components/user/profile/ProfileMenuItem';
-import { db } from '../../config/firebase';
-import { useAuth } from '../../context/AuthContext';
-import { signOut } from '../../services/authService';
+import { Bell, ChevronLeft, Clock, Lock, LogOut, User, Wallet } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import ProfileMenuItem from '../../../components/user/profile/ProfileMenuItem';
+import { useAuth } from '../../../context/AuthContext';
+import { signOut } from '../../../services/authService';
 
 export default function DriverProfile() {
     const { user } = useAuth();
-    const [userRole, setUserRole] = useState<string | null>(null);
     const navigate = useNavigate();
-
-    useEffect(() => {
-        const checkRole = async () => {
-            if (!user) return;
-
-            // Check if restaurant owner
-            const restaurantDoc = await getDoc(doc(db, 'restaurants', user.uid));
-            if (restaurantDoc.exists()) {
-                setUserRole('owner');
-                return;
-            }
-
-            // Check if staff
-            const staffQuery = query(
-                collectionGroup(db, 'staff'),
-                where('uid', '==', user.uid)
-            );
-            const staffDocs = await getDocs(staffQuery);
-            if (!staffDocs.empty) {
-                setUserRole('staff');
-            }
-        };
-
-        checkRole();
-    }, [user]);
 
     const handleLogout = async () => {
         try {
@@ -51,8 +22,13 @@ export default function DriverProfile() {
             items: [{ icon: User, label: 'Modifier le profil', path: '/driver/profile/edit' }]
         },
         {
+            section: 'Portefeuille',
+            items: [{ icon: Wallet, label: 'Compte stripe', path: '/driver/profile/stripe-connect' }]
+        },
+        {
             section: 'Paramètres',
             items: [
+                { icon: Clock, label: 'Historique', path: '/driver/profile/history' },
                 { icon: Lock, label: 'Mot de passe', path: '/driver/profile/password' },
                 { icon: Bell, label: 'Notifications', path: '/driver/profile/notifications' }
             ]
