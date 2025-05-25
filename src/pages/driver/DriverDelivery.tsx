@@ -94,7 +94,7 @@ export default function DriverDelivery() {
         {/* Carte statique de l'adresse */}
         <div className="mb-6 rounded-lg overflow-hidden">
           <img
-            src={`https://maps.googleapis.com/maps/api/staticmap?center=${encodeURIComponent(order.delivery?.deliveryAddress!)}&zoom=15&size=600x300&key=AIzaSyBi3DoK4uEJmMfyjnSCLoQ_hxIv-h-Cbf4&markers=${encodeURIComponent(order.delivery?.deliveryAddress!)}`}
+            src={`https://maps.googleapis.com/maps/api/staticmap?center=${encodeURIComponent(order.delivery?.address!)}&zoom=15&size=600x300&key=AIzaSyBi3DoK4uEJmMfyjnSCLoQ_hxIv-h-Cbf4&markers=${encodeURIComponent(order.delivery?.address!)}`}
             alt="Carte de livraison"
             className="w-full h-[300px] object-cover"
           />
@@ -160,7 +160,7 @@ export default function DriverDelivery() {
 
         <div className="space-y-3">
           <a
-            href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(order.delivery?.deliveryAddress!)}`}
+            href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(order.delivery?.address!)}`}
             target="_blank"
             rel="noopener noreferrer"
             className="w-full bg-emerald-500 text-white py-3 rounded-lg flex items-center justify-center gap-2"
