@@ -21,16 +21,20 @@ import {
   PieChart,
   TrendingUp
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Line } from 'react-chartjs-2';
+import { useReactToPrint } from 'react-to-print';
 import AdminLayout from '../../components/admin/AdminLayout';
 import OrdersChart from '../../components/admin/charts/OrdersChart';
 import SalesChart from '../../components/admin/charts/SalesChart';
+import XReceipt from '../../components/admin/XTicket';
+import ZTicket from '../../components/admin/ZTicket';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { useOrderContext } from '../../context/OrderContext';
 import { useRestaurantContext } from '../../context/RestaurantContext';
 import useOrderNotification from '../../hooks/useOrderNotification';
-import { exportAccountingData, getAccountingData } from '../../services/accountingService';
+import { exportAccountingData, getAccountingData, getTicketData } from '../../services/accountingService';
+import { XReport, ZReport } from '../../types/tickets';
 
 // Register ChartJS components
 ChartJS.register(
@@ -75,6 +79,10 @@ export default function Accounting() {
   });
   const [error, setError] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [printZ, setPrintZ] = useState(false);
+  const [printX, setPrintX] = useState(false);
+  const [zTicket, setZTicket] = useState<ZReport | null>(null);
+  const [xTicket, setXTicket] = useState<XReport | null>(null);
 
   useOrderNotification();
 
@@ -152,6 +160,106 @@ export default function Accounting() {
       setLoading(false);
     }
   };
+
+  const ZRef = useRef<HTMLDivElement>(null);
+  const XRef = useRef<HTMLDivElement>(null);
+
+  const handlePrintZ = useReactToPrint({
+    contentRef: ZRef,
+    documentTitle: 'Ticket Z'
+  });
+
+  const handlePrintX = useReactToPrint({
+    contentRef: XRef,
+    documentTitle: 'Ticket X'
+  });
+
+  const handleZTicketExport = async () => {
+    const now = new Date();
+    const start = new Date(now.setHours(0, 0, 0, 0));
+    const end = new Date(now.setHours(23, 59, 59, 999));
+
+    const accountingData = await getTicketData(restaurant!, start, end);
+
+    console.log('Z Ticket Data:', accountingData);
+
+    setZTicket({
+      restaurantName: restaurant?.name || 'Mon Restaurant',
+      address: restaurant?.address || 'Inconnue',
+      siret: restaurant?.siret || 'Inconnu',
+      openedAt: restaurant?.lastServiceStart!,
+      closedAt: restaurant?.lastServiceEnd!,
+      printedAt: new Date(),
+      orderCount: accountingData.metrics.orderCount,
+      customerCount: 0,
+      averageTicket: accountingData.metrics.averageOrderValue,
+      paymentMethods: Object.keys(accountingData.metrics.paymentMethodBreakdown).map
+        (method => ({
+          label: method,
+          amount: accountingData.metrics.paymentMethodBreakdown[method].amount,
+          count: accountingData.metrics.paymentMethodBreakdown[method].count
+        })),
+      taxDetails: ['10', '20'].map(rate => ({
+        rate: parseFloat(rate),
+        base: 0,
+        tax: 0
+      })),
+      totalHT: accountingData.metrics.totalRevenue,
+      totalTTC: accountingData.metrics.totalRevenue,
+      remises: 0,
+      annulations: 0,
+      cashStart: 0,
+      cashEnd: accountingData.metrics.totalRevenue,
+      customerAccountBalance: 0,
+    })
+
+    setPrintZ(true);
+
+    setTimeout(() => {
+      handlePrintZ();
+      setPrintZ(false);
+    }, 2000);
+  }
+
+  const handleXTicketExport = async () => {
+    const now = new Date();
+    const start = restaurant?.lastServiceStart;
+
+    const accountingData = await getTicketData(restaurant!, start!, now);
+
+    console.log('X Ticket Data:', accountingData);
+
+    setXTicket({
+      restaurantName: restaurant?.name || 'Mon Restaurant',
+      address: restaurant?.address || 'Inconnue',
+      siret: restaurant?.siret || 'Inconnu',
+      openedAt: restaurant?.lastServiceStart!,
+      printedAt: new Date(),
+      ordersCount: accountingData.metrics.orderCount,
+      clientsCount: 0,
+      averageTicket: accountingData.metrics.averageOrderValue,
+      payments: Object.keys(accountingData.metrics.paymentMethodBreakdown).map
+        (method => ({
+          label: method,
+          amount: accountingData.metrics.paymentMethodBreakdown[method].amount,
+          count: accountingData.metrics.paymentMethodBreakdown[method].count
+        })),
+      tva: ['10', '20'].map(rate => ({
+        rate: parseFloat(rate),
+        base: 0,
+        tax: 0
+      })),
+      totalHT: accountingData.metrics.totalRevenue,
+      totalTTC: accountingData.metrics.totalRevenue
+    })
+
+    setPrintX(true);
+
+    setTimeout(() => {
+      handlePrintX();
+      setPrintX(false);
+    }, 2000);
+  }
 
   if (loading && !metrics) {
     return (
@@ -471,14 +579,14 @@ export default function Accounting() {
               {/* Bouton pour exporter les tickets */}
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => handleExport('pdf')}
+                  onClick={() => handleXTicketExport()}
                   className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 flex items-center gap-2"
                 >
                   <Download className="h-4 w-4" />
                   Ticket X
                 </button>
                 <button
-                  onClick={() => handleExport('pdf')}
+                  onClick={() => handleZTicketExport()}
                   className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 flex items-center gap-2"
                 >
                   <Download className="h-4 w-4" />
@@ -509,7 +617,7 @@ export default function Accounting() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {transactions && transactions.length > 0 ? transactions
-                    .slice(0, 10)
+                    /* .slice(0, 10) */
                     .map((order) => (
                       <tr key={order.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -547,6 +655,19 @@ export default function Accounting() {
             </div>
           </div>
         </div>
+
+        {/* Z Ticket */}
+        {printZ && (
+          <div style={{ display: "none" }}>
+            <ZTicket ref={ZRef} report={zTicket!} />
+          </div>
+        )}
+        {/* X Ticket */}
+        {printX && (
+          <div style={{ display: "none" }}>
+            <XReceipt ref={XRef} report={xTicket!} />
+          </div>
+        )}
       </div>
     </AdminLayout>
   );

@@ -175,4 +175,6 @@ export interface Restaurant {
     };
   };
   autoPrint?: boolean;
+  lastServiceStart?: Date | null;
+  lastServiceEnd?: Date | null;
 }

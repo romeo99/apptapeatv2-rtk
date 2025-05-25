@@ -53,7 +53,9 @@ export function RestaurantProvider({ children }: { children: ReactNode }) {
 
       await updateDoc(doc(db, 'restaurants', restaurant.id), {
         isOpen: open,
-        updatedAt: serverTimestamp()
+        updatedAt: serverTimestamp(),
+        ...(open && { lastServiceStart: new Date() }),
+        ...(!open && { lastServiceEnd: new Date() }),
       });
     } catch (err) {
       console.error('Error updating restaurant status:', err);

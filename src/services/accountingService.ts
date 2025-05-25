@@ -2,7 +2,7 @@ import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firesto
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { db } from '../config/firebase';
-import type { Order } from '../types/firebase';
+import type { Order, Restaurant } from '../types/firebase';
 
 interface DateRange {
   start: Date;
@@ -244,5 +244,166 @@ async function generatePDF(orders: Order[], metrics: any, dateRange: any, restau
     return pdf.output('blob');
   } finally {
     document.body.removeChild(container);
+  }
+}
+
+export async function getTicketData(restaurant: Restaurant, startDate: Date, endDate: Date) {
+
+  try {
+    // Query orders from both collections
+    const [historyRef, ordersRef] = [
+      collection(db, 'restaurants', restaurant.id, 'history'),
+      collection(db, 'restaurants', restaurant.id, 'orders')
+    ];
+
+    const [historyQuery, ordersQuery] = [
+      query(historyRef, where('createdAt', '>=', startDate), where('createdAt', '<=', endDate)),
+      query(ordersRef, where('createdAt', '>=', startDate), where('createdAt', '<=', endDate))
+    ];
+
+    const [historySnapshot, ordersSnapshot] = await Promise.all([
+      getDocs(historyQuery),
+      getDocs(ordersQuery)
+    ]);
+
+    // Combine and process orders
+    const allOrders = [
+      ...historySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate?.() || new Date(doc.data().createdAt)
+      })),
+      ...ordersSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate?.() || new Date(doc.data().createdAt)
+      }))
+    ] as Order[];
+
+    // Filter and sort orders
+    const completedOrders = allOrders
+      .filter(order => order.status === 'completed' || order.paymentStatus === 'paid')
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
+    // Calculate daily metrics
+    const revenue: Record<string, number> = {};
+    const orders: Record<string, number> = {};
+
+    completedOrders.forEach(order => {
+      const dateKey = order.createdAt.toISOString().split('T')[0];
+      revenue[dateKey] = (revenue[dateKey] || 0) + order.total;
+      orders[dateKey] = (orders[dateKey] || 0) + 1;
+    });
+
+    const dailyRevenue: number = Object.values(revenue).reduce((sum, value) => sum + value, 0);
+    const dailyOrders: number = Object.values(orders).reduce((sum, value) => sum + value, 0);
+
+    // Calculate metrics
+    const metrics = {
+      totalRevenue: completedOrders.reduce((sum, order) => sum + order.subtotal, 0),
+      orderCount: completedOrders.length,
+      averageOrderValue: completedOrders.length > 0
+        ? completedOrders.reduce((sum, order) => sum + order.subtotal, 0) / completedOrders.length
+        : 0,
+      paymentMethodBreakdown: completedOrders.reduce((acc, order) => {
+        const method = order.paymentMethod || 'unknown';
+        acc[method] = { amount: (acc[method]?.amount || 0) + order.subtotal, count: (acc[method]?.count || 0) + 1 };
+        return acc;
+      }, {} as Record<string, Record<string, number>>),
+      dailyRevenue,
+      dailyOrders
+    };
+
+    return {
+      orders: completedOrders,
+      metrics,
+    };
+  } catch (error) {
+    console.error('Error fetching accounting data:', error);
+    throw error;
+  }
+}
+
+export async function getZTicketData(restaurant: Restaurant) {
+
+  try {
+    // Calculate date range based on period
+    const now = new Date();
+    let startDate = now //La date de debut et l'heure de debut de la journée
+    startDate.setHours(0, 0, 0, 0); // Set to the start of the day
+    let endDate = now; //La date de fin et l'heure de fin de la journée
+    endDate.setHours(23, 59, 59, 999); // Set to the end of the day
+
+    // Query orders from both collections
+    const [historyRef, ordersRef] = [
+      collection(db, 'restaurants', restaurant.id, 'history'),
+      collection(db, 'restaurants', restaurant.id, 'orders')
+    ];
+
+    const [historyQuery, ordersQuery] = [
+      query(historyRef, where('createdAt', '>=', startDate), where('createdAt', '<=', endDate)),
+      query(ordersRef, where('createdAt', '>=', startDate), where('createdAt', '<=', endDate))
+    ];
+
+    const [historySnapshot, ordersSnapshot] = await Promise.all([
+      getDocs(historyQuery),
+      getDocs(ordersQuery)
+    ]);
+
+    // Combine and process orders
+    const allOrders = [
+      ...historySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate?.() || new Date(doc.data().createdAt)
+      })),
+      ...ordersSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate?.() || new Date(doc.data().createdAt)
+      }))
+    ] as Order[];
+
+    // Filter and sort orders
+    const completedOrders = allOrders
+      .filter(order => order.status === 'completed' || order.paymentStatus === 'paid')
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
+    // Calculate daily metrics
+    const revenue: Record<string, number> = {};
+    const orders: Record<string, number> = {};
+
+    completedOrders.forEach(order => {
+      const dateKey = order.createdAt.toISOString().split('T')[0];
+      revenue[dateKey] = (revenue[dateKey] || 0) + order.total;
+      orders[dateKey] = (orders[dateKey] || 0) + 1;
+    });
+
+    const dailyRevenue: number = Object.values(revenue).reduce((sum, value) => sum + value, 0);
+    const dailyOrders: number = Object.values(orders).reduce((sum, value) => sum + value, 0);
+
+    // Calculate metrics
+    const metrics = {
+      totalRevenue: completedOrders.reduce((sum, order) => sum + order.subtotal, 0),
+      orderCount: completedOrders.length,
+      averageOrderValue: completedOrders.length > 0
+        ? completedOrders.reduce((sum, order) => sum + order.subtotal, 0) / completedOrders.length
+        : 0,
+      paymentMethodBreakdown: completedOrders.reduce((acc, order) => {
+        const method = order.paymentMethod || 'unknown';
+        acc[method] = { amount: (acc[method]?.amount || 0) + order.subtotal, count: (acc[method]?.count || 0) + 1 };
+        return acc;
+      }, {} as Record<string, Record<string, number>>),
+      dailyRevenue,
+      dailyOrders
+    };
+
+    return {
+      orders: completedOrders,
+      metrics,
+    };
+  } catch (error) {
+    console.error('Error fetching accounting data:', error);
+    throw error;
   }
 }
