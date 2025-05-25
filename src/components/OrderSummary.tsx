@@ -12,9 +12,10 @@ interface OrderSummaryProps extends React.HTMLAttributes<HTMLDivElement> {
   total: number;
   themeColor?: string;
   setMessage?: (message: string) => void;
+  type?: string;
 }
 
-export default function OrderSummary({ restaurants, items, serviceFees, deliveryFees, subtotal, total, themeColor, setMessage, ...props }: OrderSummaryProps) {
+export default function OrderSummary({ restaurants, items, serviceFees, deliveryFees, subtotal, total, themeColor, setMessage, type, ...props }: OrderSummaryProps) {
   const [restaurantNames, setRestaurantNames] = useState<Record<string, string>>({});
   const [orderType, setOrderType] = useState<string>('');
 
@@ -281,7 +282,7 @@ export default function OrderSummary({ restaurants, items, serviceFees, delivery
             <div className="font-medium">{subtotal.toFixed(2)}€</div>
           </div>
           {
-            orderType === 'delivery' && (
+            (orderType === 'delivery' || type === 'delivery') && (
               <div className="flex justify-between mt-2">
                 <div className="text-gray-600">Frais de livraison</div>
                 <div className="text-gray-600">{deliveryFees.toFixed(2)}€</div>

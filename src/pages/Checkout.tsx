@@ -186,8 +186,7 @@ export default function Checkout() {
         paymentStatus: selectedMethod === 'cash' && !isRegisterMode ? 'pending' : 'paid',
         scheduledTime,
         ...(deliveryInfo && { delivery: deliveryInfo }),
-        deliveryFees: parseFloat(deliveryFees.toFixed(2)),
-        deliveryStatus: 'pending'
+        ...(orderType.type === 'delivery' && { deliveryFees: parseFloat(deliveryFees.toFixed(2)), deliveryStatus: 'pending' }),
       };
     } else {
       // Commande d'un seul restaurant
@@ -216,8 +215,7 @@ export default function Checkout() {
         orderNumber: orderNumber,
         scheduledTime,
         ...(deliveryInfo && { delivery: deliveryInfo }),
-        deliveryFees: parseFloat(deliveryFees.toFixed(2)),
-        deliveryStatus: 'pending'
+        ...(orderType.type === 'delivery' && { deliveryFees: parseFloat(deliveryFees.toFixed(2)), deliveryStatus: 'pending' }),
       };
     }
 
@@ -380,7 +378,7 @@ export default function Checkout() {
                 const orderData = JSON.parse(localStorage.getItem('orderData') || '{}');
 
                 // Créer la commande dans Firestore
-                let orderId: string | string[] | void = isFoodCourtOrder ? await createFoodCourtOrder(foodCourtId!, orderData) : await createOrder(restaurantId!, orderData);
+                let orderId: string | string[] | void = isFoodCourtOrder ? await createFoodCourtOrder(foodCourtId!, { ...orderData, checkoutSessionId: sessionId }) : await createOrder(restaurantId!, { ...orderData, checkoutSessionId: sessionId });
 
                 if (!orderId) {
                   throw new Error('Erreur lors de la création de la commande');
@@ -454,7 +452,13 @@ export default function Checkout() {
           >Maintenant
           </button>
           <button
-            onClick={() => setIsScheduled(true)}
+            onClick={() => {
+              setIsScheduled(true);
+              setScheduledTime({
+                date: today,
+                time: ``,
+              });
+            }}
             className={`p-3 sm:p-4 rounded-xl flex flex-col items-center gap-1 sm:gap-2 border-2 transition-colors bg-opacity-10
               bg-white border-gray-200 hover:border-2`}
             style={isScheduled ? {
@@ -488,19 +492,6 @@ export default function Checkout() {
                 name="scheduledTime"
                 id="scheduledTime"
                 className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                min={(() => {
-                  const now = new Date();
-                  now.setMinutes(now.getMinutes() + (restaurant?.averagePreparationTime || 15) + 1);
-
-                  const minHour = 8; // Heure minimale (ex: 08:00)
-                  const minDate = new Date();
-                  minDate.setHours(minHour, 0, 0, 0); // Fixe l'heure minimale
-
-                  // Si la date choisie est aujourd'hui, alors appliquer la restriction sur l'heure
-                  return scheduledTime?.date === new Date().toISOString().split('T')[0]
-                    ? now.toTimeString().slice(0, 5)
-                    : "00:00"; // Sinon, pas de restriction
-                })()}
                 value={scheduledTime?.time || ''}
                 onChange={(e) => setScheduledTime((prev) => ({ ...prev, time: e.target.value }))}
               />

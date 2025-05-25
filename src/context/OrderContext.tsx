@@ -1,4 +1,5 @@
 import { collection, deleteDoc, doc, getDoc, getDocs, onSnapshot, orderBy, query, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { createContext, useContext, useEffect, useState } from 'react';
 import { db } from '../config/firebase';
 import { sendOrderNotification } from '../services/notificationService';
@@ -67,7 +68,7 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
       const orderData = orderDoc.data();
       const updates: any = {
         status: status === 'payandprepare' ? 'preparing' : status,
-        paymentStatus: status === 'payandprepare'  ? 'paid' : orderData.paymentStatus,
+        paymentStatus: status === 'payandprepare' ? 'paid' : orderData.paymentStatus,
         updatedAt: serverTimestamp(),
         lastStatusUpdate: new Date().toISOString(),
         statusUpdatedAt: serverTimestamp(),
@@ -121,21 +122,36 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
       await updateDoc(restaurantOrderRef, updates);
 
       if (status === 'delivered') {
+        //Handle Driver Payment
+        const functions = getFunctions();
+        const handleDriverPayment = httpsCallable(functions, 'handleDriverPayment');
+
+        // Créer la session Stripe
+        try {
+          const { data } = await handleDriverPayment({
+            driverId: user?.uid,
+            sessionId: orderData.checkoutSessionId,
+            restaurantId: orderData.restaurantId,
+            orderId: orderId,
+          });
+          console.log('Stripe session created:', data);
+
+          await deleteDoc(orderRef);
+
+          //Enregistrement de la commande dans l'historique du livreur
+          const driverHistoryRef = doc(db, 'users', user?.uid!, 'delivery', orderId);
+          await setDoc(driverHistoryRef, {
+            ...orderData,
+            status: 'delivered',
+            deliveredAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          });
+        } catch (error) {
+          throw new Error('Failed to create Stripe session for driver payment');
+        }
+
         //Suppression de la commande dans les livraisons disponibles
-        await deleteDoc(orderRef);
-
-        //Enregistrement de la commande dans l'historique du livreur
-        const driverHistoryRef = doc(db, 'users', user?.uid!, 'delivery', orderId);
-        await setDoc(driverHistoryRef, {
-          ...orderData,
-          status: 'delivered',
-          deliveredAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        });
       }
-
-      // Log pour le débogage
-      console.log(`Order ${orderId} status updated to ${status} with payment status ${updates.paymentStatus || orderData.paymentStatus}`);
 
       // Envoyer une notification au client si l'ordre a un userId
       /* const order = orders.find(o => o.id === orderId);

@@ -55,6 +55,7 @@ export default function DriverDelivery() {
       setError('La préparation de la commande n\'est pas terminée. Attendez la confirmation du restaurant.');
       return;
     }
+    
     try {
       setLoading(true);
       setError(null);

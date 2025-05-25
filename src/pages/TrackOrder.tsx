@@ -106,7 +106,7 @@ export default function TrackOrder() {
             setStatusChanged(true);
             setTimeout(() => setStatusChanged(false), 1000);
           }
-          
+
           setOrder(orderData);
         } else {
           setError('Commande introuvable');
@@ -228,8 +228,8 @@ export default function TrackOrder() {
           <div className="bg-gray-50 p-6 rounded-xl mb-6">
             {/* Barre de progression */}
             <div className="relative h-2 bg-gray-200 rounded-full overflow-hidden mb-8">
-              <div 
-                className="h-full bg-emerald-500 transition-all duration-1000" 
+              <div
+                className="h-full bg-emerald-500 transition-all duration-1000"
                 style={{ width: `${progressPercentage}%` }}
               />
             </div>
@@ -291,8 +291,10 @@ export default function TrackOrder() {
         <OrderSummary
           items={order.items}
           subtotal={order.subtotal}
-          serviceFees={order.total - order.subtotal}
+          serviceFees={order.total - (order.subtotal + (order.deliveryFee || 0))}
           total={order.total}
+          deliveryFees={order.deliveryFee!}
+          type={order.type}
         />
       </div>
     </div>

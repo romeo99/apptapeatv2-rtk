@@ -345,6 +345,10 @@ export const retrieveCheckoutSession = functions.https.onCall(async (data, conte
 });
 
 export const handleDriverPayment = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Authentication required');
+  }
+
   const { driverId, sessionId, restaurantId, orderId } = data;
 
   if (!driverId) {
@@ -374,15 +378,23 @@ export const handleDriverPayment = functions.https.onCall(async (data, context) 
   if (!session) {
     throw new functions.https.HttpsError('not-found', 'Session not found');
   }
-  const { paymentSessionId } = session.metadata!;
+  //const { paymentSessionId } = session.metadata!;
 
   if (session.payment_status === 'paid') {
-    await stripe.transfers.create({
-      amount: orderData!.deliveryFees,
-      currency: 'eur',
-      destination: driverData.stripeAccountId,
-      transfer_group: paymentSessionId,
-    });
-  }
+    try {
+      await stripe.transfers.create({
+        amount: Math.round(orderData!.deliveryFee * 100),
+        currency: 'eur',
+        destination: driverData.stripeAccountId,
+        transfer_group: session.id,
+      });
 
+      return { success: true, message: 'Payment transferred to driver' };
+    } catch (error: any) {
+      console.error(`Failed to transfer to driver ${driverId}:`, error);
+      throw new functions.https.HttpsError('internal', 'Stripe transfer failed');
+    }
+  } else {
+    throw new functions.https.HttpsError('failed-precondition', 'Payment not completed');
+  }
 });

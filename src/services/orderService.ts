@@ -81,10 +81,10 @@ export const createOrder = async (restaurantId: string, orderData: {
     deliveryAdress: string;
     additionalInfo: string;
   };
+  checkoutSessionId?: string;
 }) => {
 
   try {
-
     // Validate restaurant ID
     if (!restaurantId?.trim()) {
       throw new Error('ID du restaurant invalide');
@@ -188,12 +188,15 @@ export const createOrder = async (restaurantId: string, orderData: {
           additionalInfo: orderData.message,
         }
       }),
-      deliveryFee: orderData.deliveryFees,
-      deliveryStatus: orderData.deliveryStatus,
+      ...(orderType.type === 'delivery' && {
+        deliveryFee: orderData.deliveryFees,
+        deliveryStatus: orderData.deliveryStatus,
+      }),
       message: orderData.message,
       customerName: orderData.customerName,
       createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
+      updatedAt: serverTimestamp(),
+      ...(orderData.checkoutSessionId && { checkoutSessionId: orderData.checkoutSessionId }) 
     };
 
     // Create order in restaurant's orders collection
@@ -373,6 +376,7 @@ export const createFoodCourtOrder = async (foodCourtId: string, orderData: {
     deliveryAdress: string;
     additionalInfo: string;
   };
+  checkoutSessionId?: string;
 }) => {
   try {
     if (!foodCourtId) {
