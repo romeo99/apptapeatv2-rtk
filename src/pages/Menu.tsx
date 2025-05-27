@@ -164,21 +164,6 @@ export default function Menu() {
   }, [isRegisterMode]);
 
   useEffect(() => {
-    if (!restaurantId) return;
-
-    const loadPromotions = async () => {
-      try {
-        const promotions = await getActivePromotions(restaurantId);
-        setActivePromotions(promotions);
-      } catch (err) {
-        console.error('Error loading promotions:', err);
-      }
-    };
-
-    loadPromotions();
-  }, [restaurantId]);
-
-  useEffect(() => {
     try {
       if (!restaurantId) {
         if (foodCourtId) {
@@ -299,8 +284,8 @@ export default function Menu() {
       <div className="fixed top-0 left-0 right-0 bg-white shadow-sm z-40">
         <div className="relative flex flex-col px-4 py-3">
           <div className="flex items-center gap-4">
-            <button onClick={() => navigate(-1)} className="w-8 h-8 rounded-lg flex items-center justify-center text-white" 
-                   style={{ backgroundColor: themeColor }}>
+            <button onClick={() => navigate(-1)} className="w-8 h-8 rounded-lg flex items-center justify-center text-white"
+              style={{ backgroundColor: themeColor }}>
               <ChevronLeft className="h-6 w-6 text-white" />
             </button>
             <div>
@@ -334,77 +319,77 @@ export default function Menu() {
       </div>
       <div className="fixed top-0 left-0 right-0 bottom-0 overflow-hidden" style={{ paddingTop: activePromotions.length > 0 ? '220px' : '180px', paddingBottom: '96px' }}>
         <div className="h-full overflow-y-auto px-4">
-        {/* Bandeau promotions */}
-        {activePromotions.length > 0 && (
-          <div className="fixed top-[160px] left-0 right-0 bg-emerald-500 text-white py-1.5 z-40">
-            <div className="relative overflow-hidden">
-              <div className="flex transition-transform duration-500 ease-in-out" style={{ transform: `translateX(-${currentSlide * 100}%)` }}>
-                {activePromotions.map((promo, index) => (
-                  <div key={promo.id} className="flex-shrink-0 w-full px-4 flex items-center justify-center gap-2">
-                    <Tag className="h-4 w-4" />
-                    <span className="text-sm font-medium">
-                      {promo.name} - {promo.description}
-                    </span>
-                  </div>
-                ))}
-              </div>
-              {/* Indicateurs de slide */}
-              {activePromotions.length > 1 && (
-                <div className="absolute -bottom-1 left-0 right-0 flex justify-center gap-1 pb-1">
-                  {activePromotions.map((_, index) => (
-                    <div key={index} className={`w-1.5 h-1.5 rounded-full transition-colors ${currentSlide === index ? 'bg-white' : 'bg-white/50'}`} />
+          {/* Bandeau promotions */}
+          {activePromotions.length > 0 && (
+            <div className="fixed top-[160px] left-0 right-0 bg-emerald-500 text-white py-1.5 z-40">
+              <div className="relative overflow-hidden">
+                <div className="flex transition-transform duration-500 ease-in-out" style={{ transform: `translateX(-${currentSlide * 100}%)` }}>
+                  {activePromotions.map((promo, index) => (
+                    <div key={promo.id} className="flex-shrink-0 w-full px-4 flex items-center justify-center gap-2">
+                      <Tag className="h-4 w-4" />
+                      <span className="text-sm font-medium">
+                        {promo.name} - {promo.description}
+                      </span>
+                    </div>
                   ))}
                 </div>
-              )}
-            </div>
-          </div>
-        )}
-        <div className="grid grid-cols-2 gap-4">
-          {filteredItems.map((item) => (
-            <div key={item.id} onClick={() => handleItemClick(item)} className={`bg-white rounded-xl overflow-hidden shadow-sm transition-all relative h-[175px] ${item.status !== 'available' || !isOpen ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
-              <div className="relative h-20">
-                <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
-                {(item.status !== 'available' || !isOpen) && (
-                  <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-                    <span className="text-white font-medium text-sm">{!isOpen ? 'Restaurant fermé' : 'Non disponible'}</span>
+                {/* Indicateurs de slide */}
+                {activePromotions.length > 1 && (
+                  <div className="absolute -bottom-1 left-0 right-0 flex justify-center gap-1 pb-1">
+                    {activePromotions.map((_, index) => (
+                      <div key={index} className={`w-1.5 h-1.5 rounded-full transition-colors ${currentSlide === index ? 'bg-white' : 'bg-white/50'}`} />
+                    ))}
                   </div>
                 )}
-                <button className="absolute top-2 right-2 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-lg" onClick={(e) => handleInfoClick(e, item)}>
-                  <Info className="h-5 w-5" style={{ color: themeColor }} />
-                </button>
               </div>
-              <div className="p-2">
-                <h3 className="font-medium text-sm mb-0.5">{item.name}</h3>
-                <p className="font-medium" style={{ color: themeColor }}>
-                  {item.price.toFixed(2)} €
-                </p>
-                {/* Afficher le badge de promotion si applicable */}
-                {activePromotions.map((promo) => {
-                  if (promo.conditions.productId === item.id) {
-                    return (
-                      <div key={promo.id} className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full text-xs">
-                        <Tag className="h-3 w-3" />
-                        {promo.type === 'double' ? '1 acheté = 1 offert' : promo.type === 'discount' ? `-${promo.conditions.discountPercent}%` : promo.type === 'free' ? `${promo.conditions.freeProductName} offert` : promo.type === 'second_item_discount' ? `-${promo.conditions.discountPercent}% sur le 2ème` : promo.type === 'second_item_discount' ? `-${promo.conditions.discountPercent}% sur le 2ème` : ''}
-                      </div>
-                    );
-                  }
-                  return null;
-                })}
-              </div>
-              {item.status === 'available' && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleItemClick(item);
-                  }}
-                  className="absolute bottom-3 right-3 w-8 h-8 rounded-full flex items-center justify-center text-white shadow-lg"
-                  style={{ backgroundColor: themeColor }}>
-                  <Plus className="h-5 w-5" />
-                </button>
-              )}
             </div>
-          ))}
-        </div>
+          )}
+          <div className="grid grid-cols-2 gap-4">
+            {filteredItems.map((item) => (
+              <div key={item.id} onClick={() => handleItemClick(item)} className={`bg-white rounded-xl overflow-hidden shadow-sm transition-all relative h-[175px] ${item.status !== 'available' || !isOpen ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
+                <div className="relative h-20">
+                  <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                  {(item.status !== 'available' || !isOpen) && (
+                    <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                      <span className="text-white font-medium text-sm">{!isOpen ? 'Restaurant fermé' : 'Non disponible'}</span>
+                    </div>
+                  )}
+                  <button className="absolute top-2 right-2 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-lg" onClick={(e) => handleInfoClick(e, item)}>
+                    <Info className="h-5 w-5" style={{ color: themeColor }} />
+                  </button>
+                </div>
+                <div className="p-2">
+                  <h3 className="font-medium text-sm mb-0.5">{item.name}</h3>
+                  <p className="font-medium" style={{ color: themeColor }}>
+                    {item.price.toFixed(2)} €
+                  </p>
+                  {/* Afficher le badge de promotion si applicable */}
+                  {activePromotions.map((promo) => {
+                    if (promo.conditions.productId === item.id) {
+                      return (
+                        <div key={promo.id} className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full text-xs">
+                          <Tag className="h-3 w-3" />
+                          {promo.type === 'double' ? '1 acheté = 1 offert' : promo.type === 'discount' ? `-${promo.conditions.discountPercent}%` : promo.type === 'free' ? `${promo.conditions.freeProductName} offert` : promo.type === 'second_item_discount' ? `-${promo.conditions.discountPercent}% sur le 2ème` : promo.type === 'second_item_discount' ? `-${promo.conditions.discountPercent}% sur le 2ème` : ''}
+                        </div>
+                      );
+                    }
+                    return null;
+                  })}
+                </div>
+                {item.status === 'available' && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleItemClick(item);
+                    }}
+                    className="absolute bottom-3 right-3 w-8 h-8 rounded-full flex items-center justify-center text-white shadow-lg"
+                    style={{ backgroundColor: themeColor }}>
+                    <Plus className="h-5 w-5" />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 

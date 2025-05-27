@@ -82,6 +82,7 @@ export const createOrder = async (restaurantId: string, orderData: {
     additionalInfo: string;
   };
   checkoutSessionId?: string;
+  loyaltyPoints?: number;
 }) => {
 
   try {
@@ -196,7 +197,7 @@ export const createOrder = async (restaurantId: string, orderData: {
       customerName: orderData.customerName,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
-      ...(orderData.checkoutSessionId && { checkoutSessionId: orderData.checkoutSessionId }) 
+      ...(orderData.checkoutSessionId && { checkoutSessionId: orderData.checkoutSessionId })
     };
 
     // Create order in restaurant's orders collection
@@ -324,6 +325,28 @@ export const createOrder = async (restaurantId: string, orderData: {
         ...orderToCreate,
         id: orderId
       });
+
+      try {
+        const loyaltyRef = doc(db, 'users', currentUser.uid, 'loyalties', restaurantId);
+        const userDoc = await getDoc(loyaltyRef);
+        const userLoyaltyPoints = userDoc.exists() ? (userDoc.data()?.loyaltyPoints || 0) : 0;
+        const newLoyaltyPoints = userLoyaltyPoints + (orderData.loyaltyPoints || 0);
+
+        if (userDoc.exists()) {
+          await updateDoc(loyaltyRef, {
+            loyaltyPoints: newLoyaltyPoints,
+            updatedAt: serverTimestamp()
+          });
+        } else {
+          await setDoc(loyaltyRef, {
+            loyaltyPoints: newLoyaltyPoints,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+          });
+        }
+      } catch (err) {
+        console.error('Erreur lors de la mise à jour des points de fidélité:', err);
+      }
     }
 
     return orderId;

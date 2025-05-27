@@ -117,6 +117,15 @@ export interface Promotion {
   order: number;
 }
 
+export interface Loyalty {
+  id: string;
+  name: string;
+  description?: string;
+  value?: number;
+  point?: number;
+  status: 'active' | 'inactive';
+}
+
 export interface MenuOptions {
   drink?: string;
   side?: string;

@@ -2,6 +2,8 @@ import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useRestaurantContext } from '../context/RestaurantContext';
+import { getActiveLoyalties } from '../services/loyaltyService';
+import { Loyalty } from '../types/firebase';
 
 interface MenuHeaderProps {
   isFoodCourt?: boolean;
@@ -19,8 +21,10 @@ export default function MenuHeader({ isFoodCourt, restaurants, onRestaurantSelec
   const { restaurant, themeColor } = useRestaurantContext();
   const [showRestaurants, setShowRestaurants] = useState(false);
   const foodCourtId = searchParams.get('foodCourtId');
+  const restaurantId = searchParams.get('restaurantId');
 
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const [activeLoyalties, setActiveLoyalties] = useState<Loyalty | never[]>();
 
   // Store foodCourtId in localStorage when it's present in URL
   useEffect(() => {
@@ -50,6 +54,20 @@ export default function MenuHeader({ isFoodCourt, restaurants, onRestaurantSelec
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showRestaurants]);
+
+  useEffect(() => {
+    if (!restaurantId) return;
+
+    const loadLoyalties = async () => {
+      try {
+        const loyalties = await getActiveLoyalties(restaurantId);
+        setActiveLoyalties(loyalties);
+      } catch (err) {
+        console.error('Error loading loyalties:', err);
+      }
+    };
+    loadLoyalties();
+  }, [restaurantId]);
 
   return (
     <div className="fixed top-0 left-0 right-0 bg-white shadow-sm z-50 mb-4">
@@ -145,6 +163,7 @@ export default function MenuHeader({ isFoodCourt, restaurants, onRestaurantSelec
                   />
                 </div>
                 <h1 className="font-medium">{restaurant?.name || "Restaurant"}</h1>
+                <h1 className="font-medium" style={{ color: themeColor }}>{activeLoyalties?.name}</h1>
               </div>
             </div>
           </div>

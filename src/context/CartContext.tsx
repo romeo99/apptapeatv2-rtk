@@ -1,11 +1,12 @@
 import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useUserLocation } from '../hooks/useUserLocation';
+import { getActiveLoyalties } from '../services/loyaltyService';
 import { getActivePromotions } from '../services/promotionService';
 import { calculateDistance } from '../services/restaurantService';
 import { getApplicationFee } from '../services/superadminService';
 import { CartItem, MenuOptions } from '../types';
-import type { Promotion } from '../types/firebase';
+import type { Loyalty, Promotion } from '../types/firebase';
 import { useRestaurantContext } from './RestaurantContext';
 
 interface CartContextType {
@@ -28,6 +29,7 @@ interface CartContextType {
   setScheduledTime: (time: { date: string; time: string } | null) => void;
   anonymousUser: string;
   fixAnonymousUser: (value: string) => void;
+  loyaltyPoints?: number;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -47,6 +49,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const loc = useLocation();
   const [foodCourtId, setFoodCourtId] = useState<string | null>(null);
   const [activePromotions, setActivePromotions] = useState<Promotion[]>([]);
+  const [activeLoyalties, setActiveLoyalties] = useState<Loyalty | never[]>();
   const [applicationFee, setApplicationFee] = useState<number>(0);
   const [anonymouUser, setAnonymousUser] = useState('');
 
@@ -87,8 +90,18 @@ export function CartProvider({ children }: { children: ReactNode }) {
         setActivePromotions([]);
       }
     };
+    const loadLoyalties = async () => {
+      try {
+        const loyalties = await getActiveLoyalties(restaurant.id);
+        setActiveLoyalties(loyalties);
+      } catch (err) {
+        // Silently handle error - loyalties are optional
+        setActiveLoyalties([]);
+      }
+    };
 
     loadPromotions();
+    loadLoyalties();
   }, [restaurant?.id]);
 
   // Initialize foodCourtId from URL or localStorage
@@ -366,6 +379,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const anonymousUser = anonymouUser;
 
+  //Loyalties
+  const loyaltyPoints = useMemo(() => {
+    if (!restaurant?.id || !activeLoyalties) return 0;
+
+    return (subtotal * activeLoyalties.point) / activeLoyalties.value;
+  }, [restaurant?.id, activeLoyalties, subtotal]);
+
   let orderType = JSON.parse(localStorage.getItem('orderType') || '{"type":""}');
   const isDelivery = orderType?.type === 'delivery';
 
@@ -410,7 +430,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
         scheduledTime,
         setScheduledTime,
         anonymousUser,
-        fixAnonymousUser
+        fixAnonymousUser,
+        loyaltyPoints
       }}>
       {children}
     </CartContext.Provider>

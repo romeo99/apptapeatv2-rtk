@@ -73,10 +73,8 @@ const navigation = [
       { name: 'Promotions', href: '/admin/marketing/promotions', icon: Percent },
       {
         name: 'Programme fidélité',
-        href: '/admin/marketing/loyalty',
+        href: '/admin/marketing/loyalties',
         icon: Award,
-        soon: true,
-        disabled: true
       }
     ]
   },
@@ -203,8 +201,8 @@ export default function AdminSidebar({ onClose }: AdminSidebarProps) {
                 <button
                   onClick={() => toggleMenu(item.name)}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-base font-semibold transition-colors ${isSubMenuOpen(item)
-                      ? 'bg-gray-100 text-gray-900'
-                      : 'text-gray-600 hover:bg-gray-50'
+                    ? 'bg-gray-100 text-gray-900'
+                    : 'text-gray-600 hover:bg-gray-50'
                     }`}
                 >
                   <item.icon className="h-6 w-6" />

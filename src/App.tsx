@@ -52,6 +52,8 @@ import DriversManagement from './pages/admin/DriversManagement';
 import IngredientsManagement from './pages/admin/IngredientsManagement';
 import InventoryManagement from './pages/admin/InventoryManagement';
 import LiveOrders from './pages/admin/LiveOrders';
+import LoyaltyForm from './pages/admin/marketing/LoyaltyForm';
+import LoyaltyPage from './pages/admin/marketing/LoyaltyPage';
 import PromotionForm from './pages/admin/marketing/PromotionForm';
 import PromotionsPage from './pages/admin/marketing/PromotionsPage';
 import MenuItemForm from './pages/admin/MenuItemForm';
@@ -207,6 +209,9 @@ export default function App() {
                           <Route path="/marketing/promotions" element={<PromotionsPage />} />
                           <Route path="/marketing/promotions/new" element={<PromotionForm />} />
                           <Route path="/marketing/promotions/edit/:id" element={<PromotionForm />} />
+                          <Route path="/marketing/loyalties" element={<LoyaltyPage />} />
+                          <Route path="/marketing/loyalties/new" element={<LoyaltyForm />} />
+                          <Route path="/marketing/loyalties/edit/:id" element={<LoyaltyForm />} />
                           <Route path="/categories" element={<CategoryManagement />} />
                           <Route path="/categories/new" element={<CategoryForm />} />
                           <Route path="/categories/edit/:id" element={<CategoryForm />} />

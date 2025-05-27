@@ -18,7 +18,7 @@ const stripePromise = loadStripe(`${import.meta.env.VITE_STRIPE_PUBLISH_KEY}`);
 
 export default function Checkout() {
   const navigate = useNavigate();
-  const { items, applicationFee, serviceFees, subtotal, deliveryFees, total, clearCart, scheduledTime, isFoodCourtOrder, foodCourtId, setScheduledTime, anonymousUser, } = useCart();
+  const { items, applicationFee, serviceFees, subtotal, deliveryFees, total, clearCart, scheduledTime, isFoodCourtOrder, foodCourtId, setScheduledTime, anonymousUser, loyaltyPoints } = useCart();
   const { themeColor, restaurant } = useRestaurantContext();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -214,6 +214,7 @@ export default function Checkout() {
         customerName: !user || isRegisterMode ? anonymousUser : user.displayName,
         orderNumber: orderNumber,
         scheduledTime,
+        ...(loyaltyPoints && { loyaltyPoints: loyaltyPoints }),
         ...(deliveryInfo && { delivery: deliveryInfo }),
         ...(orderType.type === 'delivery' && { deliveryFees: parseFloat(deliveryFees.toFixed(2)), deliveryStatus: 'pending' }),
       };

@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { getRestaurant } from '../services/restaurantService';
 import { CartItem } from '../types';
 import { OrderItem } from '../types/firebase';
+import { useCart } from '../context/CartContext';
+import { Award } from 'lucide-react';
 
 interface OrderSummaryProps extends React.HTMLAttributes<HTMLDivElement> {
   restaurants?: Record<string, { items: CartItem[]; amount: number }>;
@@ -18,6 +20,7 @@ interface OrderSummaryProps extends React.HTMLAttributes<HTMLDivElement> {
 export default function OrderSummary({ restaurants, items, serviceFees, deliveryFees, subtotal, total, themeColor, setMessage, type, ...props }: OrderSummaryProps) {
   const [restaurantNames, setRestaurantNames] = useState<Record<string, string>>({});
   const [orderType, setOrderType] = useState<string>('');
+  const {loyaltyPoints} = useCart()
 
   useEffect(() => {
     const loadRestaurantNames = async () => {
@@ -71,6 +74,12 @@ export default function OrderSummary({ restaurants, items, serviceFees, delivery
     <div className="bg-white rounded-xl overflow-hidden" {...props}>
       <div className="p-4 border-b">
         <h3 className="font-medium">Détails de la commande</h3>
+        <div className="flex items-center gap-2 text-emerald-600 mt-1">
+          <Award className="h-4 w-4" />
+          <span className="text-sm">
+            Vous gagnez {loyaltyPoints} points de fidélité avec cette commande
+          </span>
+        </div>
       </div>
       {setMessage && <div className="p-4 border-b">
         <label className="block text-sm font-medium text-gray-700 mb-1">

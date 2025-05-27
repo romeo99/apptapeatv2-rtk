@@ -1,4 +1,4 @@
-import { Calendar, Minus, Plus, Trash2, X } from 'lucide-react';
+import { Award, Calendar, Minus, Plus, Trash2, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -10,7 +10,7 @@ function Cart() {
   const cartRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const { themeColor } = useRestaurantContext();
-  const { items, isCartOpen, toggleCart, updateQuantity, removeItem, scheduledTime, isFoodCourtOrder, foodCourtId, total, subtotal, serviceFees, fixAnonymousUser, anonymousUser } = useCart();
+  const { items, isCartOpen, toggleCart, updateQuantity, removeItem, scheduledTime, isFoodCourtOrder, foodCourtId, total, subtotal, serviceFees, fixAnonymousUser, anonymousUser, loyaltyPoints } = useCart();
   const [restaurantNames, setRestaurantNames] = useState<Record<string, string>>({});
   const { user } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -141,6 +141,14 @@ function Cart() {
                         month: 'long',
                       })}{' '}
                       à {scheduledTime.time}
+                    </span>
+                  </div>
+                )}
+                {loyaltyPoints && user?.uid && (
+                  <div className="flex items-center gap-2 text-emerald-600 mt-1">
+                    <Award className="h-4 w-4" />
+                    <span className="text-sm">
+                      Vous gagnez {loyaltyPoints} points de fidélité avec cette commande
                     </span>
                   </div>
                 )}

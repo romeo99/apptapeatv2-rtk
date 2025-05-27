@@ -241,7 +241,7 @@ export default function OptionsSettings() {
               </fieldset>
             </div>
             <div className="p-6 grid grid-cols-1 gap-6 sm:grid-cols-2">
-              <div>
+              {formData.deliveryFeeType === 'fixed' && <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Frais de livraison (€)
                 </label>
@@ -259,9 +259,8 @@ export default function OptionsSettings() {
                 <p className="mt-2 text-sm text-gray-500">
                   Frais fixes appliqués à chaque commande en livraison
                 </p>
-              </div>
-
-              <div>
+              </div>}
+              {formData.deliveryFeeType === 'variable' && <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Rémunération livreur (€/Km)
                 </label>
@@ -279,7 +278,7 @@ export default function OptionsSettings() {
                 <p className="mt-2 text-sm text-gray-500">
                   Montant reversé au livreur pour chaque livraison
                 </p>
-              </div>
+              </div>}
             </div>
           </div>
 
