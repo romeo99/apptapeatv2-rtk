@@ -5,7 +5,7 @@ export const uploadToS3 = async (restaurantId: string, src: string) => {
     const file = await generateIcon(restaurantId, src);
 
     const params = {
-        Bucket: 'tapeat-restaurants-logos-for-marker',//import.meta.env.VITE_AWS_BUCKET_NAME,
+        Bucket: 'tapeat-restaurants-logos-for-marker',
         Key: file.name,
         Body: file,
         ContentType: file.type,
